@@ -75,17 +75,11 @@ class VinhomesTennisBooking {
       host: "vh.vinhomes.vn",
       "content-type": "application/json; charset=UTF-8",
       // Add more headers to mimic mobile app
-      "accept": "application/json",
-      "cache-control": "no-cache",
-      "pragma": "no-cache",
-      // Add referrer to look more legitimate
-      "referer": "https://vh.vinhomes.vn/",
     }
 
     if (method === "POST") {
       headers["Connection"] = "keep-alive"
       headers["accept-encoding"] = "gzip, deflate, br"
-      headers["content-length"] = "calculated-dynamically"
     } else {
       headers["accept-encoding"] = "gzip"
     }
