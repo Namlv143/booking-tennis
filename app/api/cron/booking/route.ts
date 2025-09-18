@@ -194,12 +194,34 @@ class TennisBookingAutomation {
         }
       }
 
-      // Trigger booking immediately at 8:30 AM (no delay)
-      const bookingResult = await this.triggerBookingFlow(token)
+      // PRECISE TIMING: Wait until exactly 8:30:00 AM Vietnam time
+      const now = getVietnamTime()
+      const targetTime = new Date(now)
+      targetTime.setHours(8, 30, 0, 0) // Exactly 8:30:00.000 AM
+      
+      if (now < targetTime) {
+        const waitTime = targetTime.getTime() - now.getTime()
+        console.log(`[CRON] PRECISE TIMING: Waiting ${waitTime}ms to reach exactly 8:30:00 AM`)
+        console.log(`[CRON] Current time: ${now.toISOString()}`)
+        console.log(`[CRON] Target time: ${targetTime.toISOString()}`)
+        
+        // Wait until exactly 8:30:00 AM
+        await new Promise(resolve => setTimeout(resolve, waitTime))
+        
+        const afterWait = getVietnamTime()
+        console.log(`[CRON] PRECISE TIMING: Reached target time at ${afterWait.toISOString()}`)
+      } else if (now > targetTime) {
+        console.log(`[CRON] PRECISE TIMING: Already past 8:30:00 AM (${now.toISOString()}) - proceeding immediately`)
+      } else {
+        console.log(`[CRON] PRECISE TIMING: Exactly at 8:30:00 AM - proceeding immediately`)
+      }
+
+      // Trigger booking with retry logic
+      const bookingResult = await this.triggerBookingFlowWithRetry(token)
       if (!bookingResult.success) {
         return { 
           success: false, 
-          message: 'Booking failed', 
+          message: 'Booking failed after all retries', 
           error: bookingResult.error 
         }
       }
@@ -216,6 +238,38 @@ class TennisBookingAutomation {
         error: String(error) 
       }
     }
+  }
+
+  // Enhanced booking flow with retry logic
+  private async triggerBookingFlowWithRetry(token: string, maxRetries: number = 3): Promise<{ success: boolean; error?: string }> {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`[CRON] PRECISE TIMING: Attempt ${attempt}/${maxRetries} at ${getVietnamTime().toISOString()}`)
+        
+        const result = await this.triggerBookingFlow(token)
+        
+        if (result.success) {
+          console.log(`[CRON] PRECISE TIMING: SUCCESS on attempt ${attempt}`)
+          return result
+        }
+        
+        console.log(`[CRON] PRECISE TIMING: FAILED on attempt ${attempt}: ${result.error}`)
+        
+        // If not the last attempt, wait before retry
+        if (attempt < maxRetries) {
+          const retryDelay = attempt * 1000 // 1s, 2s, 3s delays
+          console.log(`[CRON] PRECISE TIMING: Waiting ${retryDelay}ms before retry...`)
+          await new Promise(resolve => setTimeout(resolve, retryDelay))
+        }
+      } catch (error) {
+        console.error(`[CRON] PRECISE TIMING: Error on attempt ${attempt}:`, error)
+        if (attempt === maxRetries) {
+          return { success: false, error: String(error) }
+        }
+      }
+    }
+    
+    return { success: false, error: 'All retry attempts failed' }
   }
 
 }
