@@ -74,7 +74,6 @@ class VinhomesTennisBooking {
       "device-id": "51a9e0d3fcb8574c",
       host: "vh.vinhomes.vn",
       "content-type": "application/json; charset=UTF-8",
-      // Add more headers to mimic mobile app
     }
 
     if (method === "POST") {
@@ -140,11 +139,14 @@ class VinhomesTennisBooking {
         body: data ? JSON.stringify(data) : undefined,
         // Mimic mobile app behavior more closely
         cache: "no-store",
-        redirect: "follow", // Changed from "manual" to "follow" like mobile apps
-        referrerPolicy: "strict-origin-when-cross-origin",
+        redirect: "manual",
+        referrerPolicy: "no-referrer",
         mode: "cors",
         credentials: "omit",
         keepalive: false,
+        // Additional options to match mobile app behavior
+        integrity: undefined,
+        signal: undefined,
       })
 
       console.log("[v0] Response status:", response.status, response.statusText)
