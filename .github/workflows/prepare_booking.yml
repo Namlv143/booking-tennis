@@ -3,7 +3,8 @@ on:
   schedule:
     # Runs at 8:28 AM Vietnam Time (1:28 AM UTC)
     - cron: '28 1 * * *'
-
+    # --- ADD THIS LINE TO ENABLE MANUAL TRIGGER ---
+  workflow_dispatch:
 jobs:
   prepare-and-package:
     runs-on: ubuntu-latest
