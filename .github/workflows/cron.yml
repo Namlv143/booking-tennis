@@ -17,7 +17,7 @@ jobs:
         # Use -L to follow redirects and add the required Authorization header
         run: |
           curl --request GET --fail --location \
-          --url 'https://booking-tennis-swart.vercel.app/api/cron/booking' \
+          --url 'https://vinsmart-tennis.vercel.app/api/cron/booking' \
           --header 'Authorization: Bearer ${{ secrets.CRON_SECRET }}'
         env:
           TZ: Asia/Ho_Chi_Minh
