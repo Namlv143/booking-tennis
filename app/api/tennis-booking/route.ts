@@ -109,7 +109,7 @@ class VinhomesTennisBooking {
     method: string,
     endpoint: string,
     data?: any,
-    params?: Record<string, string>,
+    params?: Record<string, string | any>,
   ): Promise<ApiResponse> {
     const url = new URL(endpoint, VinhomesTennisBooking.BASE_URL)
     if (params) {
@@ -122,13 +122,13 @@ class VinhomesTennisBooking {
 
     console.log("Making request:", {
       method,
-      url: url.toString(),
+      url: url,
       headers: { ...headers, "x-vinhome-token": "***" }, // Hide token in logs
       data: data ? JSON.stringify(data, null, 2) : undefined,
     })
 
     try {
-      const response = await fetch(url.toString(), {
+      const response = await fetch(url, {
         method,
         headers,
         body: data ? JSON.stringify(data) : undefined,
@@ -163,7 +163,7 @@ class VinhomesTennisBooking {
   private async getTimeSlots(): Promise<StepResult> {
     this.bookingDate = this.getBookingDate()
 
-    const params = { bookingDate: this.bookingDate.toString() }
+    const params = { bookingDate: this.bookingDate }
     const endpoint = `/api/vhr/utility/v0/utility/${VinhomesTennisBooking.UTILITY_ID}/booking-time`
 
     const response = await this.makeRequest("GET", endpoint, undefined, params)
@@ -185,7 +185,7 @@ class VinhomesTennisBooking {
 
   private async getClassifies(): Promise<StepResult> {
     const params = {
-      timeConstraintId: this.timeConstraintId.toString(),
+      timeConstraintId: this.timeConstraintId,
       monthlyTicket: "false",
       fromTime: this.fromTime!,
     }
@@ -201,9 +201,9 @@ class VinhomesTennisBooking {
 
   private async getPlaces(): Promise<StepResult> {
     const params = {
-      classifyId: VinhomesTennisBooking.CLASSIFY_ID.toString(),
+      classifyId: VinhomesTennisBooking.CLASSIFY_ID,
       fromTime: this.fromTime!,
-      timeConstraintId: this.timeConstraintId.toString(),
+      timeConstraintId: this.timeConstraintId,
       monthlyTicket: "false",
     }
     const endpoint = `/api/vhr/utility/v0/utility/${VinhomesTennisBooking.UTILITY_ID}/places`
@@ -218,9 +218,9 @@ class VinhomesTennisBooking {
 
   private async getTicketInfo(): Promise<StepResult> {
     const params = {
-      bookingDate: this.bookingDate!.toString(),
-      placeUtilityId: this.placeUtilityId.toString(),
-      timeConstraintId: this.timeConstraintId.toString(),
+      bookingDate: this.bookingDate,
+      placeUtilityId: this.placeUtilityId,
+      timeConstraintId: this.timeConstraintId,
     }
     const endpoint = "/api/vhr/utility/v0/utility/ticket-info"
 
