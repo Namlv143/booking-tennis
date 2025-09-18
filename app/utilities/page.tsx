@@ -1,12 +1,12 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Loader2, LayoutList, LogOut, ArrowRight, Calendar, Clock } from "lucide-react"
-import { TokenService } from "@/lib/token-service"
+import { ClientTokenService } from "@/lib/client-token-service"
 
 export default function UtilitiesPage() {
   const [isLoadingUtility, setIsLoadingUtility] = useState(false)
@@ -21,22 +21,7 @@ export default function UtilitiesPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const router = useRouter()
 
-  // Check for existing token on component mount
-  useEffect(() => {
-    const token = TokenService.getToken("0979251496")
-    
-    if (token) {
-      setCurrentToken(token)
-      setIsLoggedIn(true)
-      // Auto-call utilities when page loads
-      handleGetUtility()
-    } else {
-      // No token, redirect to login
-      router.push("/login")
-    }
-  }, [router])
-
-  const handleGetUtility = async () => {
+  const handleGetUtility = useCallback(async () => {
     if (!currentToken) {
       setUtilityApiResult({
         success: false,
@@ -78,15 +63,47 @@ export default function UtilitiesPage() {
     } finally {
       setIsLoadingUtility(false)
     }
-  }
+  }, [currentToken])
 
-  const handleLogout = () => {
-    TokenService.clearAllTokens()
-    setCurrentToken(null)
-    setIsLoggedIn(false)
-    setUserData(null)
-    setUtilityApiResult(null)
-    router.push("/login")
+  // Check for existing token on component mount
+  useEffect(() => {
+    const checkServerToken = async () => {
+      try {
+        const token = await ClientTokenService.getValidToken("0979251496")
+        
+        if (token) {
+          setCurrentToken(token)
+          setIsLoggedIn(true)
+          // Auto-call utilities when page loads
+          handleGetUtility()
+        } else {
+          // No valid token, redirect to login
+          router.push("/login")
+        }
+      } catch (error) {
+        console.error("Failed to check server token:", error)
+        router.push("/login")
+      }
+    }
+
+    checkServerToken()
+  }, [router, handleGetUtility])
+
+  const handleLogout = async () => {
+    try {
+      // Clear token from server
+      await ClientTokenService.clearToken("0979251496")
+      
+      setCurrentToken(null)
+      setIsLoggedIn(false)
+      setUserData(null)
+      setUtilityApiResult(null)
+      router.push("/login")
+    } catch (error) {
+      console.error("Failed to logout:", error)
+      // Still redirect to login even if server logout fails
+      router.push("/login")
+    }
   }
 
   const handleGoToBooking = () => {
@@ -121,7 +138,6 @@ export default function UtilitiesPage() {
             </div>
             <div>
               <h2 className="font-semibold text-gray-800">Welcome back!</h2>
-              <p className="text-sm text-gray-600">Ready to manage your utilities</p>
             </div>
           </div>
           
