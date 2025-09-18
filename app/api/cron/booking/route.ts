@@ -194,27 +194,10 @@ class TennisBookingAutomation {
         }
       }
 
-      // PRECISE TIMING: Wait until exactly 8:30:00 AM Vietnam time
+      // PRECISE TIMING: Start booking immediately at 8:30:00 AM
       const now = getVietnamTime()
-      const targetTime = new Date(now)
-      targetTime.setHours(8, 30, 0, 0) // Exactly 8:30:00.000 AM
-      
-      if (now < targetTime) {
-        const waitTime = targetTime.getTime() - now.getTime()
-        console.log(`[CRON] PRECISE TIMING: Waiting ${waitTime}ms to reach exactly 8:30:00 AM`)
-        console.log(`[CRON] Current time: ${now.toISOString()}`)
-        console.log(`[CRON] Target time: ${targetTime.toISOString()}`)
-        
-        // Wait until exactly 8:30:00 AM
-        await new Promise(resolve => setTimeout(resolve, waitTime))
-        
-        const afterWait = getVietnamTime()
-        console.log(`[CRON] PRECISE TIMING: Reached target time at ${afterWait.toISOString()}`)
-      } else if (now > targetTime) {
-        console.log(`[CRON] PRECISE TIMING: Already past 8:30:00 AM (${now.toISOString()}) - proceeding immediately`)
-      } else {
-        console.log(`[CRON] PRECISE TIMING: Exactly at 8:30:00 AM - proceeding immediately`)
-      }
+      console.log(`[CRON] PRECISE TIMING: Starting booking immediately at ${now.toISOString()}`)
+      console.log(`[CRON] PRECISE TIMING: No waiting - booking process takes time, so starting ASAP`)
 
       // Trigger booking with retry logic
       const bookingResult = await this.triggerBookingFlowWithRetry(token)
