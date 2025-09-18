@@ -14,14 +14,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Call our API route
+        # Use -L to follow redirects and add the required Authorization header
         run: |
-          curl --request GET \
-            --url 'https://booking-tennis-5wv0emtgd-namlv143s-projects.vercel.app/api/cron/booking?x-vercel-set-bypass-cookie=true&x-vercel-protection-bypass=${{ secrets.VERCEL_BYPASS_TOKEN }}' \
-            --header 'User-Agent: GitHub-Actions-Cron/1.0' \
-            --header 'Accept: application/json' \
-            --max-time 300 \
-            --retry 5 \
-            --retry-delay 2 \
-            --retry-max-time 60
+          curl --request GET --fail --location \
+          --url 'https://booking-tennis-swart.vercel.app/api/cron/booking' \
+          --header 'Authorization: Bearer ${{ secrets.CRON_SECRET }}'
         env:
           TZ: Asia/Ho_Chi_Minh
+
