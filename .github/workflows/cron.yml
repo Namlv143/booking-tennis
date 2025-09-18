@@ -2,11 +2,11 @@ name: Vercel Cron Job
 
 on:
   schedule:
-    # Runs at 1:29:59 AM UTC every day (8:29:59 AM Vietnam time)
-    # Setup: 0s, API call: 1s = booking hits server at exactly 8:30:00 AM
-    # Vietnam is UTC+7, so 1:29:59 AM UTC = 8:29:59 AM Vietnam
-    # Note: GitHub Actions cron only supports minute precision, so using 1:29 AM
-    - cron: '29 1 * * *'
+    # Runs at 1:30 AM UTC every day (8:30 AM Vietnam time)
+    # Setup: 0s, API call: 1s = booking hits server at 8:30:01 AM
+    # Vietnam is UTC+7, so 1:30 AM UTC = 8:30 AM Vietnam
+    # Server receives request at 8:30:01 AM (acceptable timing)
+    - cron: '30 1 * * *'
   workflow_dispatch:  # Allow manual triggering
 
 jobs:
