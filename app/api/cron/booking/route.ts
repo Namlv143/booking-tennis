@@ -194,22 +194,10 @@ class TennisBookingAutomation {
         }
       }
 
-      // PRECISE TIMING: Wait until exactly 8:30:00 AM
+      // MAXIMUM SPEED: Start booking immediately - no waiting, no delays
       const now = getVietnamTime()
-      const targetTime = new Date(now)
-      targetTime.setHours(8, 30, 0, 0) // Exactly 8:30:00.000 AM
-      
-      console.log(`[CRON] PRECISE TIMING: Current time: ${now.toISOString()}`)
-      console.log(`[CRON] PRECISE TIMING: Target time: ${targetTime.toISOString()}`)
-      
-      if (now < targetTime) {
-        const waitTime = targetTime.getTime() - now.getTime()
-        console.log(`[CRON] PRECISE TIMING: Waiting ${waitTime}ms to reach exactly 8:30:00 AM`)
-        await new Promise(resolve => setTimeout(resolve, waitTime))
-        console.log(`[CRON] PRECISE TIMING: NOW starting booking at exactly 8:30:00 AM`)
-      } else {
-        console.log(`[CRON] PRECISE TIMING: Starting booking immediately (already at/past 8:30 AM)`)
-      }
+      console.log(`[CRON] MAXIMUM SPEED: Starting booking IMMEDIATELY at ${now.toISOString()}`)
+      console.log(`[CRON] MAXIMUM SPEED: Racing for slots - every millisecond counts!`)
 
       // Trigger booking with retry logic
       const bookingResult = await this.triggerBookingFlowWithRetry(token)
@@ -235,29 +223,27 @@ class TennisBookingAutomation {
     }
   }
 
-  // Enhanced booking flow with retry logic
+  // MAXIMUM SPEED booking flow with fast retry logic
   private async triggerBookingFlowWithRetry(token: string, maxRetries: number = 3): Promise<{ success: boolean; error?: string }> {
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        console.log(`[CRON] PRECISE TIMING: Attempt ${attempt}/${maxRetries} at ${getVietnamTime().toISOString()}`)
+        console.log(`[CRON] MAXIMUM SPEED: Attempt ${attempt}/${maxRetries} at ${getVietnamTime().toISOString()}`)
         
         const result = await this.triggerBookingFlow(token)
         
         if (result.success) {
-          console.log(`[CRON] PRECISE TIMING: SUCCESS on attempt ${attempt}`)
+          console.log(`[CRON] MAXIMUM SPEED: SUCCESS on attempt ${attempt}`)
           return result
         }
         
-        console.log(`[CRON] PRECISE TIMING: FAILED on attempt ${attempt}: ${result.error}`)
+        console.log(`[CRON] MAXIMUM SPEED: FAILED on attempt ${attempt}: ${result.error}`)
         
-        // If not the last attempt, wait before retry
+        // If not the last attempt, retry IMMEDIATELY (no delay)
         if (attempt < maxRetries) {
-          const retryDelay = attempt * 1000 // 1s, 2s, 3s delays
-          console.log(`[CRON] PRECISE TIMING: Waiting ${retryDelay}ms before retry...`)
-          await new Promise(resolve => setTimeout(resolve, retryDelay))
+          console.log(`[CRON] MAXIMUM SPEED: Retrying IMMEDIATELY - no delay!`)
         }
       } catch (error) {
-        console.error(`[CRON] PRECISE TIMING: Error on attempt ${attempt}:`, error)
+        console.error(`[CRON] MAXIMUM SPEED: Error on attempt ${attempt}:`, error)
         if (attempt === maxRetries) {
           return { success: false, error: String(error) }
         }
