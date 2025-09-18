@@ -14,7 +14,7 @@ jobs:
       - name: Call our API route
         run: |
           curl --request GET \
-            --url 'https://booking-tennis-pyfoe30r5-namlv143s-projects.vercel.app/api/cron/booking' \
+            --url 'https://booking-tennis-5wv0emtgd-namlv143s-projects.vercel.app/api/cron/booking' \
             --header 'User-Agent: GitHub-Actions-Cron/1.0' \
             --header 'Accept: application/json' \
             --max-time 300 \
