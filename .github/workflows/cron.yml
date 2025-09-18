@@ -2,10 +2,10 @@ name: Vercel Cron Job
 
 on:
   schedule:
-    # Runs at 1:29 AM UTC every day (8:29 AM Vietnam time)
-    # This gives 1 minute buffer for GitHub Actions setup, so API call happens at ~8:30 AM
-    # Vietnam is UTC+7, so 1:29 AM UTC = 8:29 AM Vietnam
-    - cron: '29 1 * * *'
+    # Runs at 1:29:55 AM UTC every day (8:29:55 AM Vietnam time)
+    # This gives 5 seconds buffer for GitHub Actions setup, so API call happens at ~8:30:00 AM
+    # Vietnam is UTC+7, so 1:29:55 AM UTC = 8:29:55 AM Vietnam
+    - cron: '55 29 1 * * *'
   workflow_dispatch:  # Allow manual triggering
 
 jobs:
