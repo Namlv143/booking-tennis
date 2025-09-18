@@ -120,11 +120,6 @@ class VinhomesTennisBooking {
 
     const headers = this.getHeaders(method)
 
-    // Add dynamic content-length for POST requests
-    if (method === "POST" && data) {
-      headers["content-length"] = Buffer.byteLength(JSON.stringify(data), 'utf8').toString()
-    }
-
     console.log("[v0] Making request:", {
       method,
       url: url.toString(),
