@@ -1,7 +1,6 @@
 // Client-side token management service using localStorage
 export interface TokenData {
   token: string
-  expires: number
   username: string
 }
 
@@ -9,23 +8,12 @@ export class TokenService {
   private static readonly STORAGE_KEY = 'vinhomes_tokens'
 
   /**
-   * Store token in localStorage
+   * Store token in localStorage (no expiration)
    */
   static storeToken(username: string, token: string): void {
     try {
-      // Extract expiration from JWT token
-      let expires: number
-      try {
-        const payload = JSON.parse(atob(token.split('.')[1]))
-        expires = payload.exp * 1000 // Convert to milliseconds
-      } catch (error) {
-        console.warn('Failed to parse token expiration, using 24-hour default')
-        expires = Date.now() + 24 * 60 * 60 * 1000 // 24 hours default
-      }
-
       const tokenData: TokenData = {
         token,
-        expires,
         username
       }
 
@@ -36,14 +24,14 @@ export class TokenService {
       // Store back to localStorage
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(existingTokens))
       
-      console.log(`[TokenService] Token stored for user: ${username}, expires: ${new Date(expires).toISOString()}`)
+      console.log(`[TokenService] Token stored for user: ${username} (no expiration)`)
     } catch (error) {
       console.error('[TokenService] Failed to store token:', error)
     }
   }
 
   /**
-   * Get valid token for username
+   * Get token for username (no expiration check)
    */
   static getToken(username: string): string | null {
     try {
@@ -55,13 +43,7 @@ export class TokenService {
         return null
       }
 
-      // Check if token is expired
-      if (Date.now() > tokenData.expires) {
-        this.clearToken(username)
-        console.log(`[TokenService] Token expired for user: ${username}`)
-        return null
-      }
-
+      // Return token without expiration check
       return tokenData.token
     } catch (error) {
       console.error('[TokenService] Failed to get token:', error)
@@ -109,27 +91,25 @@ export class TokenService {
   }
 
   /**
-   * Check if token exists and is valid
+   * Check if token exists
    */
   static hasValidToken(username: string): boolean {
     return this.getToken(username) !== null
   }
 
   /**
-   * Get token expiration info
+   * Get token info (no expiration)
    */
-  static getTokenInfo(username: string): { token: string; expires: Date; isValid: boolean } | null {
+  static getTokenInfo(username: string): { token: string; isValid: boolean } | null {
     try {
       const tokens = this.getAllTokens()
       const tokenData = tokens[username]
 
       if (!tokenData) return null
 
-      const isValid = Date.now() <= tokenData.expires
       return {
         token: tokenData.token,
-        expires: new Date(tokenData.expires),
-        isValid
+        isValid: true // Always valid since no expiration
       }
     } catch (error) {
       console.error('[TokenService] Failed to get token info:', error)
@@ -138,32 +118,15 @@ export class TokenService {
   }
 
   /**
-   * Clean up expired tokens
+   * Clean up expired tokens (no-op since tokens don't expire)
    */
   static cleanupExpiredTokens(): void {
-    try {
-      const tokens = this.getAllTokens()
-      const now = Date.now()
-      let cleaned = false
-
-      Object.keys(tokens).forEach(username => {
-        if (now > tokens[username].expires) {
-          delete tokens[username]
-          cleaned = true
-        }
-      })
-
-      if (cleaned) {
-        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(tokens))
-        console.log('[TokenService] Expired tokens cleaned up')
-      }
-    } catch (error) {
-      console.error('[TokenService] Failed to cleanup expired tokens:', error)
-    }
+    // No-op since tokens don't expire
+    console.log('[TokenService] Token cleanup skipped (tokens don\'t expire)')
   }
 }
 
-// Auto-cleanup expired tokens when module loads
+// Auto-cleanup when module loads (no-op since tokens don't expire)
 if (typeof window !== 'undefined') {
   TokenService.cleanupExpiredTokens()
 }
