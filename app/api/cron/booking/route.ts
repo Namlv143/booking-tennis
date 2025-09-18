@@ -1,165 +1,93 @@
 import { NextResponse } from 'next/server'
-import { getVietnamTime } from '@/lib/booking-config'
+import { getVietnamTime } from '../../../../lib/booking-config'
 
-// Types for the booking automation
-interface BookingData {
-  courtId: string
-  date: string
-  timeSlot: string
+// Import the VinhomesTennisBooking class from tennis-booking route
+// Types for better type safety
+interface BookingRequest {
+  bookingDate: number
+  placeId: number
+  timeConstraintId: number
+  utilityId: number
+  residentTicket: number
+  residentChildTicket: null
+  guestTicket: null
+  guestChildTicket: null
 }
 
-class TennisBookingAutomation {
-  private static readonly BASE_URL = 'https://vh.vinhomes.vn'
+interface BookingData {
+  bookingRequests: BookingRequest[]
+  paymentMethod: null
+  vinClubPoint: null
+  deviceType: string
+  cs?: string
+}
 
-  // Get existing token (no login to avoid token expiration)
-  private async getExistingToken(): Promise<string | null> {
-    try {
-      console.log('[CRON] Getting existing token...')
-      
-      // For automated booking, we need a valid token that was obtained manually
-      // This should be set as an environment variable or stored securely
-      const storedToken = process.env.VINHOMES_TOKEN
-      
-      if (!storedToken) {
-        console.log('[CRON] ❌ NO STORED TOKEN FOUND - please set VINHOMES_TOKEN environment variable')
-        console.log('[CRON] Available env vars:', Object.keys(process.env).filter(key => key.includes('VINHOMES')))
-        return null
-      }
+interface TimeSlot {
+  id: number
+  fromTime: string
+}
 
-      console.log('[CRON] ✅ STORED TOKEN FOUND - length:', storedToken.length)
-      console.log('[CRON] Token prefix:', storedToken.substring(0, 10) + '...')
-      return storedToken
-    } catch (error) {
-      console.error('[CRON] ❌ Error getting existing token:', error)
-      return null
-    }
+interface ApiResponse {
+  data?: any
+  error?: string
+  code?: number
+  message?: string
+}
+
+interface StepResult {
+  success?: boolean
+  error?: string
+}
+
+class VinhomesTennisBooking {
+  // Static constants - configuration that doesn't change
+  private static readonly BASE_URL = "https://vh.vinhomes.vn"
+  private static readonly SECRET_KEY = "tqVtg9GqwUiKbHqkSG4BpMyXPu3BbpUHmzOqgEQa1KYJZ1Ckv8@@@"
+  private static readonly UTILITY_ID = 75
+  private static readonly CLASSIFY_ID = 118
+  private static readonly RESIDENT_TICKET_COUNT = 4
+  private static readonly DEVICE_TYPE = "ANDROID"
+
+  // Instance properties - specific to each booking
+  private readonly placeId: number
+  private readonly placeUtilityId: number
+  private readonly timeConstraintId: number
+  private readonly jwtToken: string
+  
+  // Internal state - managed during booking flow
+  private fromTime: string | null = null
+  private bookingDate: number | null = null
+
+  constructor(placeId: number, placeUtilityId: number, timeConstraintId: number, jwtToken: string) {
+    this.placeId = placeId
+    this.placeUtilityId = placeUtilityId
+    this.timeConstraintId = timeConstraintId
+    this.jwtToken = jwtToken
   }
 
-
-
-
-  // Trigger the actual booking flow (exactly like manual buttons 1 and 2) - PRECISE TIMING
-  private async triggerBookingFlow(token: string): Promise<{ success: boolean; error?: string }> {
-    try {
-      const startTime = getVietnamTime()
-      console.log(`[CRON] PRECISE TIMING: Starting booking flow at ${startTime.toISOString()}`)
-      console.log('[CRON] Triggering SIMULTANEOUS booking for cards 1 and 2...')
-      
-      // Book both cards SIMULTANEOUSLY at exact 8:30:00 AM
-      const [booking1Result, booking2Result] = await Promise.all([
-        // Card 1: S1.01 18h-20h (placeId: 801, placeUtilityId: 625, timeConstraintId: 575)
-        this.makeBookingRequest(token, {
-          placeId: 801,
-          placeUtilityId: 625,
-          timeConstraintId: 575
-        }).then(result => {
-          console.log(`[CRON] Card 1 (S1.01) ${result.success ? 'SUCCESS' : 'FAILED'} at ${getVietnamTime().toISOString()}`)
-          return result
-        }),
-        
-        // Card 2: S1.02 18h-20h (placeId: 802, placeUtilityId: 626, timeConstraintId: 575)
-        this.makeBookingRequest(token, {
-          placeId: 802,
-          placeUtilityId: 626,
-          timeConstraintId: 575
-        }).then(result => {
-          console.log(`[CRON] Card 2 (S1.02) ${result.success ? 'SUCCESS' : 'FAILED'} at ${getVietnamTime().toISOString()}`)
-          return result
-        })
-      ])
-      
-      const endTime = getVietnamTime()
-      const duration = endTime.getTime() - startTime.getTime()
-      
-      console.log(`[CRON] PRECISE TIMING: Both bookings completed in ${duration}ms`)
-      console.log(`[CRON] Card 1 result: ${booking1Result.success ? 'SUCCESS' : 'FAILED'}`)
-      console.log(`[CRON] Card 2 result: ${booking2Result.success ? 'SUCCESS' : 'FAILED'}`)
-      
-      // Return success if at least one booking succeeded
-      const overallSuccess = booking1Result.success || booking2Result.success
-      const errorMessage = !overallSuccess ? 'Both bookings failed' : undefined
-      
-      console.log(`[CRON] PRECISE TIMING: Overall booking result: ${overallSuccess ? 'SUCCESS' : 'FAILED'}`)
-      return { success: overallSuccess, error: errorMessage }
-    } catch (error) {
-      console.error('[CRON] Booking flow error:', error)
-      return { success: false, error: String(error) }
+  // Private utility methods - internal helpers
+  private getHeaders(method: string): Record<string, string> {
+    const headers: Record<string, string> = {
+      "user-agent": "Dart/3.7 (dart:io)",
+      "app-version-name": "1.5.5",
+      "device-inf": "PHY110 OPPO 35",
+      "accept-language": "vi",
+      "x-vinhome-token": this.jwtToken,
+      "device-id": "51a9e0d3fcb8574c",
+      host: "vh.vinhomes.vn",
+      "content-type": "application/json; charset=UTF-8",
     }
+
+    if (method === "POST") {
+      headers["Connection"] = "keep-alive"
+      headers["accept-encoding"] = "gzip, deflate, br"
+    } else {
+      headers["accept-encoding"] = "gzip"
+    }
+
+    return headers
   }
 
-  // Helper method to make individual booking requests
-  private async makeBookingRequest(token: string, bookingParams: {
-    placeId: number
-    placeUtilityId: number
-    timeConstraintId: number
-  }): Promise<{ success: boolean; error?: string; data?: any }> {
-    try {
-      const response = await fetch(`${TennisBookingAutomation.BASE_URL}/api/vhr/utility/v0/customer-utility/booking`, {
-        method: 'POST',
-        headers: {
-          'accept-encoding': 'gzip',
-          'accept-language': 'vi',
-          'app-version-name': '1.5.5',
-          'content-type': 'application/json; charset=UTF-8',
-          'device-id': '51a9e0d3fcb8574c',
-          'device-inf': 'PHY110 OPPO 35',
-          'host': 'vh.vinhomes.vn',
-          'user-agent': 'Dart/3.7 (dart:io)',
-          'x-vinhome-token': token
-        },
-        body: JSON.stringify({
-          bookingRequests: [{
-            bookingDate: this.getBookingDate(),
-            placeId: bookingParams.placeId,
-            timeConstraintId: bookingParams.timeConstraintId,
-            utilityId: 75,
-            residentTicket: 4,
-            residentChildTicket: null,
-            guestTicket: null,
-            guestChildTicket: null,
-          }],
-          paymentMethod: null,
-          vinClubPoint: null,
-          deviceType: 'ANDROID',
-          cs: await this.generateChecksum({
-            bookingRequests: [{
-              bookingDate: this.getBookingDate(),
-              placeId: bookingParams.placeId,
-              timeConstraintId: bookingParams.timeConstraintId,
-              utilityId: 75,
-              residentTicket: 4,
-              residentChildTicket: null,
-              guestTicket: null,
-              guestChildTicket: null,
-            }],
-            paymentMethod: null,
-            vinClubPoint: null,
-            deviceType: 'ANDROID'
-          })
-        }),
-        cache: 'no-store',
-        credentials: 'omit',
-        mode: 'cors',
-        redirect: 'follow',
-        referrerPolicy: 'no-referrer',
-        keepalive: false,
-      })
-
-      if (!response.ok) {
-        const errorText = await response.text()
-        return { success: false, error: `HTTP ${response.status}: ${errorText}` }
-      }
-
-      const result = await response.json()
-      const success = result?.data?.transactionId || result?.data?.userId
-      
-      return { success: !!success, data: result }
-    } catch (error) {
-      return { success: false, error: String(error) }
-    }
-  }
-
-  // Helper method to get booking date (tomorrow)
   private getBookingDate(): number {
     const now = new Date()
     const vietnamTime = new Date(now.getTime() + 7 * 60 * 60 * 1000) // UTC+7
@@ -167,12 +95,10 @@ class TennisBookingAutomation {
     return bookingDate.getTime()
   }
 
-  // Helper method to generate checksum
-  private async generateChecksum(bookingData: any): Promise<string> {
+  private async generateChecksum(bookingData: BookingData): Promise<string> {
     const booking = bookingData.bookingRequests[0]
     const numericSum = booking.utilityId + booking.placeId + booking.bookingDate + booking.timeConstraintId
-    const secretKey = "tqVtg9GqwUiKbHqkSG4BpMyXPu3BbpUHmzOqgEQa1KYJZ1Ckv8@@@"
-    const interpolatedString = `${numericSum}${secretKey}`
+    const interpolatedString = `${numericSum}${VinhomesTennisBooking.SECRET_KEY}`
 
     const encoder = new TextEncoder()
     const data = encoder.encode(interpolatedString)
@@ -180,6 +106,272 @@ class TennisBookingAutomation {
     const hashArray = Array.from(new Uint8Array(hashBuffer))
     return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("")
   }
+
+  private async makeRequest(
+    method: string,
+    endpoint: string,
+    data?: any,
+    params?: Record<string, string | any>,
+  ): Promise<ApiResponse> {
+    const url = new URL(endpoint, VinhomesTennisBooking.BASE_URL)
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        url.searchParams.append(key, value)
+      })
+    }
+
+    const headers = this.getHeaders(method)
+
+    console.log("[CRON] Making request:", {
+      method,
+      url: url,
+      headers: { ...headers, "x-vinhome-token": "***" }, // Hide token in logs
+      data: data ? JSON.stringify(data, null, 2) : undefined,
+    })
+
+    try {
+      const response = await fetch(url, {
+        method,
+        headers,
+        body: data ? JSON.stringify(data) : undefined,
+        cache: "no-store",
+        redirect: "manual",
+        referrerPolicy: "no-referrer",
+        mode: "cors",
+        credentials: "omit",
+        keepalive: false,
+        integrity: undefined,
+        signal: undefined,
+      })
+
+      console.log("[CRON] Response status:", response.status, response.statusText)
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.log("[CRON] Error response body:", errorText)
+        return { error: `HTTP ${response.status}: ${errorText}` }
+      }
+
+      const responseData = await response.json()
+      console.log("[CRON] Response data:", responseData)
+      return responseData
+    } catch (error) {
+      console.log("[CRON] Request failed with error:", error)
+      return { error: String(error) }
+    }
+  }
+
+  // Private booking flow methods - step-by-step process
+  private async getTimeSlots(): Promise<StepResult> {
+    this.bookingDate = this.getBookingDate()
+
+    const params = { bookingDate: this.bookingDate }
+    const endpoint = `/api/vhr/utility/v0/utility/${VinhomesTennisBooking.UTILITY_ID}/booking-time`
+
+    const response = await this.makeRequest("GET", endpoint, undefined, params)
+    if (response.error) {
+      return { error: response.error }
+    }
+
+    // Extract fromTime from API response for the specific time constraint
+    const timeSlots: TimeSlot[] = response.data || []
+    const targetSlot = timeSlots.find((slot: TimeSlot) => slot.id === this.timeConstraintId)
+
+    if (!targetSlot) {
+      return { error: `Time slot with id ${this.timeConstraintId} not found` }
+    }
+
+    this.fromTime = targetSlot.fromTime
+    return { success: true }
+  }
+
+  private async getClassifies(): Promise<StepResult> {
+    const params = {
+      timeConstraintId: this.timeConstraintId,
+      monthlyTicket: "false",
+      fromTime: this.fromTime!,
+    }
+    const endpoint = `/api/vhr/utility/v0/utility/${VinhomesTennisBooking.UTILITY_ID}/classifies`
+
+    const response = await this.makeRequest("GET", endpoint, undefined, params)
+    if (response.error) {
+      return { error: response.error }
+    }
+
+    return { success: true }
+  }
+
+  private async getPlaces(): Promise<StepResult> {
+    const params = {
+      classifyId: VinhomesTennisBooking.CLASSIFY_ID,
+      fromTime: this.fromTime!,
+      timeConstraintId: this.timeConstraintId,
+      monthlyTicket: "false",
+    }
+    const endpoint = `/api/vhr/utility/v0/utility/${VinhomesTennisBooking.UTILITY_ID}/places`
+
+    const response = await this.makeRequest("GET", endpoint, undefined, params)
+    if (response.error) {
+      return { error: response.error }
+    }
+
+    return { success: true }
+  }
+
+  private async getTicketInfo(): Promise<StepResult> {
+    const params = {
+      bookingDate: this.bookingDate,
+      placeUtilityId: this.placeUtilityId,
+      timeConstraintId: this.timeConstraintId,
+    }
+    const endpoint = "/api/vhr/utility/v0/utility/ticket-info"
+
+    const response = await this.makeRequest("GET", endpoint, undefined, params)
+    if (response.error) {
+      return { error: response.error }
+    }
+
+    return { success: true }
+  }
+
+  private async makeBooking(): Promise<ApiResponse> {
+    const bookingData: BookingData = {
+      bookingRequests: [
+        {
+          bookingDate: this.bookingDate!,
+          placeId: this.placeId,
+          timeConstraintId: this.timeConstraintId,
+          utilityId: VinhomesTennisBooking.UTILITY_ID,
+          residentTicket: VinhomesTennisBooking.RESIDENT_TICKET_COUNT,
+          residentChildTicket: null,
+          guestTicket: null,
+          guestChildTicket: null,
+        },
+      ],
+      paymentMethod: null,
+      vinClubPoint: null,
+      deviceType: VinhomesTennisBooking.DEVICE_TYPE,
+    }
+
+    // Add checksum
+    bookingData.cs = await this.generateChecksum(bookingData)
+
+    const endpoint = "/api/vhr/utility/v0/customer-utility/booking"
+    return await this.makeRequest("POST", endpoint, bookingData)
+  }
+
+  // Public method - main booking execution flow
+  async executeBookingFlow(): Promise<ApiResponse> {
+    // Step 1: Get time slots
+    console.log("[CRON] Step 1: Getting time slots...")
+    const step1 = await this.getTimeSlots()
+    if (step1.error) {
+      console.log("[CRON] Step 1 failed:", step1.error)
+      return { error: "Step 1 failed: " + step1.error }
+    }
+    console.log("[CRON] Step 1 completed successfully")
+
+    // Step 2: Get classifies
+    console.log("[CRON] Step 2: Getting classifies...")
+    const step2 = await this.getClassifies()
+    if (step2.error) {
+      console.log("[CRON] Step 2 failed:", step2.error)
+      return { error: "Step 2 failed: " + step2.error }
+    }
+    console.log("[CRON] Step 2 completed successfully")
+
+    // Step 3: Get places
+    console.log("[CRON] Step 3: Getting places...")
+    const step3 = await this.getPlaces()
+    if (step3.error) {
+      console.log("[CRON] Step 3 failed:", step3.error)
+      return { error: "Step 3 failed: " + step3.error }
+    }
+    console.log("[CRON] Step 3 completed successfully")
+
+    // Step 4: Trigger ticket info (non-blocking for performance)
+    console.log("[CRON] Step 4: Triggering ticket info (non-blocking)...")
+    this.getTicketInfo()
+      .then((result) => {
+        if (result.error) {
+          console.log("[CRON] Step 4 failed (async):", result.error)
+        } else {
+          console.log("[CRON] Step 4 completed successfully (async)")
+        }
+      })
+      .catch((error) => {
+        console.log("[CRON] Step 4 error (async):", error)
+      })
+
+    // Step 5: Make booking (parallel with ticket info for performance)
+    console.log("[CRON] Step 5: Making booking (parallel with ticket info)...")
+    const result = await this.makeBooking()
+    console.log("[CRON] Final booking result:", result)
+    return result
+  }
+}
+
+class TennisBookingAutomation {
+  // Get existing token (no login to avoid token expiration)
+  private async getExistingToken(): Promise<string | null> {
+    try {
+      console.log('[CRON] Token:', process.env.VINHOMES_TOKEN)
+      return process.env.VINHOMES_TOKEN as string
+    } catch (error) {
+      console.error('[CRON] ❌ Error getting existing token:', error)
+      return null
+    }
+  }
+
+  // Trigger the actual booking flow (exactly like manual buttons 1 and 2) - PRECISE TIMING
+  private async triggerBookingFlow(token: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      // Book both cards SIMULTANEOUSLY at exact 8:30:00 AM using full booking flow
+      const [booking1Result, booking2Result] = await Promise.all([
+        // Card 1: S1.01 18h-20h (placeId: 801, placeUtilityId: 625, timeConstraintId: 575)
+        this.executeFullBookingFlow(token, 801, 625, 575, 'S1.01'),
+        
+        // Card 2: S1.02 18h-20h (placeId: 802, placeUtilityId: 626, timeConstraintId: 575)
+        this.executeFullBookingFlow(token, 802, 626, 575, 'S1.02')
+      ])
+            
+      // Return success if at least one booking succeeded
+      const overallSuccess = booking1Result.success || booking2Result.success
+      const errorMessage = !overallSuccess ? 'Both bookings failed' : undefined
+      
+      return { success: overallSuccess, error: errorMessage }
+    } catch (error) {
+      return { success: false, error: String(error) }
+    }
+  }
+
+  // Execute full booking flow using VinhomesTennisBooking class
+  private async executeFullBookingFlow(
+    token: string, 
+    placeId: number, 
+    placeUtilityId: number, 
+    timeConstraintId: number, 
+    courtName: string
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      console.log(`[CRON] Starting full booking flow for ${courtName} at ${getVietnamTime().toISOString()}`)
+      
+      const booking = new VinhomesTennisBooking(placeId, placeUtilityId, timeConstraintId, token)
+      const result = await booking.executeBookingFlow()
+      
+      if (result.error) {
+        console.log(`[CRON] ${courtName} booking FAILED: ${result.error}`)
+        return { success: false, error: result.error }
+      }
+      
+      console.log(`[CRON] ${courtName} booking SUCCESS at ${getVietnamTime().toISOString()}`)
+      return { success: true }
+    } catch (error) {
+      console.log(`[CRON] ${courtName} booking ERROR: ${error}`)
+      return { success: false, error: String(error) }
+    }
+  }
+
 
   // Main automation method - Focus on PRECISE 8:30 AM booking only (using existing token)
   async runAutomation(): Promise<{ success: boolean; message: string; error?: string }> {
