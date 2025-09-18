@@ -16,16 +16,21 @@ pnpm install
 
 You'll need to create a Vercel access token and get your project/organization IDs:
 
-1. Go to [Vercel Dashboard](https://vercel.com/dashboard)
-2. Navigate to your project settings
-3. Go to **Settings** → **General**
-4. Copy the **Project ID**
-5. Go to **Settings** → **Teams** (if applicable) or **Account Settings**
-6. Copy the **Organization ID** (or your personal Account ID)
-7. Create an access token:
+1. **Create Vercel Access Token:**
    - Go to [Vercel Account Settings](https://vercel.com/account/tokens)
-   - Create a new token with appropriate permissions
-   - Copy the token value
+   - Click "Create Token"
+   - Give it a name like "GitHub Actions Deploy"
+   - Set expiration to "No Expiration" (or your preferred duration)
+   - Copy the token value (starts with `vercel_`)
+
+2. **Get Project and Organization IDs:**
+   - Go to [Vercel Dashboard](https://vercel.com/dashboard)
+   - Navigate to your project
+   - Go to **Settings** → **General**
+   - Copy the **Project ID** (starts with `prj_`)
+   - For Organization ID:
+     - If using a team: Go to **Settings** → **General** → **Team ID** (starts with `team_`)
+     - If personal account: Use your Account ID (starts with `user_`)
 
 ### 3. Configure GitHub Secrets
 
