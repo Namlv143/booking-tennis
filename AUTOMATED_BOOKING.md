@@ -1,28 +1,32 @@
 # Automated Tennis Booking System
 
-This system automatically books tennis courts at 8:30 AM every day using a precise cron job that runs at 8:25 AM.
+This system automatically books tennis courts at **PRECISE 8:30 AM** every day using a focused cron job.
 
 ## 🕐 **Schedule**
 
-- **8:25 AM**: Cron job triggers
-  - Logout from any existing session
-  - Login with credentials (0979251496/Nam@2025) - **exactly like manual login**
-- **8:27 AM**: Utilities call
-  - Call utilities API to get available data - **exactly like handleGetUtility**
-- **8:30 AM**: Precise timing trigger
+- **8:30 AM**: Cron job triggers (PRECISE TIMING)
+  - Use existing valid token (no login to avoid token expiration)
   - Execute booking flow for **Card 1: S1.01 18h-20h** (placeId: 801, placeUtilityId: 625, timeConstraintId: 575)
   - Execute booking flow for **Card 2: S1.02 18h-20h** (placeId: 802, placeUtilityId: 626, timeConstraintId: 575)
-  - Submit both booking requests simultaneously
+  - Submit both booking requests **simultaneously** (no delay)
 
 ## 🔧 **Configuration**
 
 ### **Cron Schedule**
-- **Vercel Cron**: `25 8 * * *` (8:25 AM every day)
+- **Vercel Cron**: `30 8 * * *` (8:30 AM every day - PRECISE TIMING)
 - **Timezone**: Asia/Ho_Chi_Minh (Vietnam time)
 
-### **Credentials**
-- **Username**: 0979251496
-- **Password**: Nam@2025
+### **Token Setup**
+- **Environment Variable**: `VINHOMES_TOKEN` (set in Vercel dashboard)
+- **Token Source**: Use the "Copy Token" button in the utilities page
+- **Steps**:
+  1. Login through web interface (`/login`)
+  2. Go to utilities page (`/utilities`)
+  3. Click "Copy Token" button
+  4. Go to Vercel Dashboard → Settings → Environment Variables
+  5. Add `VINHOMES_TOKEN` with the copied token value
+  6. Save and redeploy
+- **Why No Auto-Login**: Prevents token expiration from repeated logins
 
 ### **API Endpoints**
 - **Base URL**: https://vh.vinhomes.vn

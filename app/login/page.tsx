@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -8,65 +8,27 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Loader2, LogIn, ArrowRight } from "lucide-react"
-import { TokenService } from "@/lib/token-service"
+import { useApp } from "@/lib/context/app-context"
 
 export default function LoginPage() {
-  const [isLoggingIn, setIsLoggingIn] = useState(false)
-  const [loginResult, setLoginResult] = useState<{
-    success: boolean
-    message: string
-    data?: any
-  } | null>(null)
-
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
   const router = useRouter()
+  const { state, login } = useApp()
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (state.isLoggedIn) {
+      router.push("/utilities")
+    }
+  }, [state.isLoggedIn, router])
 
   const handleLogin = async () => {
-    setIsLoggingIn(true)
-    setLoginResult(null)
-
-    try {
-      const response = await fetch("/api/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ username, password }),
-      })
-
-      const result = await response.json()
-
-      if (response.ok && result.success && result.data?.data?.accessToken) {
-        // Store token in localStorage
-        TokenService.storeToken(username, result.data.data.accessToken)
-        
-        setLoginResult({
-          success: true,
-          message: "Login successful! Redirecting to utilities...",
-          data: result,
-        })
-
-        router.push("/utilities")
-      } else {
-        setLoginResult({
-          success: false,
-          message: result.message || "Login failed. Please try again.",
-          data: result,
-        })
-      }
-    } catch (error) {
-      setLoginResult({
-        success: false,
-        message: "Network error. Please check your connection and try again.",
-      })
-    } finally {
-      setIsLoggingIn(false)
-    }
+    await login(username, password)
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-orange-100 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <Card className="shadow-lg">
           <CardHeader className="text-center">
@@ -81,14 +43,14 @@ export default function LoginPage() {
             </CardDescription>
           </CardHeader>
 
-          <CardContent className="space-y-4">
-            {loginResult && (
-              <Alert className={loginResult.success ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50"}>
-                <AlertDescription className={loginResult.success ? "text-green-800" : "text-red-800"}>
-                  {loginResult.message}
-                </AlertDescription>
-              </Alert>
-            )}
+                  <CardContent className="space-y-4">
+                    {state.loginResult && (
+                      <Alert className={state.loginResult.success ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50"}>
+                        <AlertDescription className={state.loginResult.success ? "text-green-800" : "text-red-800"}>
+                          {state.loginResult.message}
+                        </AlertDescription>
+                      </Alert>
+                    )}
 
             <div className="space-y-4">
               <div className="space-y-2">
@@ -116,24 +78,24 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <Button
-              onClick={handleLogin}
-              disabled={isLoggingIn || !username || !password}
-              className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold py-3"
-              size="lg"
-            >
-              {isLoggingIn ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Logging in...
-                </>
-              ) : (
-                <>
-                  <LogIn className="w-4 h-4 mr-2" />
-                  Login
-                </>
-              )}
-            </Button>
+                    <Button
+                      onClick={handleLogin}
+                      disabled={state.isLoggingIn || !username || !password}
+                      className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold py-3"
+                      size="lg"
+                    >
+                      {state.isLoggingIn ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Logging in...
+                        </>
+                      ) : (
+                        <>
+                          <LogIn className="w-4 h-4 mr-2" />
+                          Login
+                        </>
+                      )}
+                    </Button>
 
             <div className="text-center">
               <Button

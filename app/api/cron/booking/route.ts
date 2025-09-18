@@ -20,6 +20,28 @@ class TennisBookingAutomation {
   }
   private static readonly BASE_URL = 'https://vh.vinhomes.vn'
 
+  // Get existing token (no login to avoid token expiration)
+  private async getExistingToken(): Promise<string | null> {
+    try {
+      console.log('[CRON] Getting existing token...')
+      
+      // For automated booking, we need a valid token that was obtained manually
+      // This should be set as an environment variable or stored securely
+      const storedToken = process.env.VINHOMES_TOKEN
+      
+      if (!storedToken) {
+        console.log('[CRON] No stored token found - please set VINHOMES_TOKEN environment variable')
+        return null
+      }
+
+      console.log('[CRON] Using stored token for booking')
+      return storedToken
+    } catch (error) {
+      console.error('[CRON] Error getting existing token:', error)
+      return null
+    }
+  }
+
   // Step 1: Logout and login with credentials (exactly like manual login)
   private async performLogin(): Promise<{ success: boolean; token?: string; error?: string }> {
     try {
@@ -318,44 +340,34 @@ class TennisBookingAutomation {
     return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("")
   }
 
-  // Main automation method
+  // Main automation method - Focus on PRECISE 8:30 AM booking only (using existing token)
   async runAutomation(): Promise<{ success: boolean; message: string; error?: string }> {
     try {
-      console.log('[CRON] Starting tennis booking automation...')
+      console.log('[CRON] Starting PRECISE 8:30 AM tennis booking...')
       
-      // Step 1: Login at 8:25 AM
-      const loginResult = await this.performLogin()
-      if (!loginResult.success || !loginResult.token) {
+      // Step 1: Get existing token (no login to avoid token expiration)
+      const token = await this.getExistingToken()
+      if (!token) {
         return { 
           success: false, 
-          message: 'Login failed', 
-          error: loginResult.error 
+          message: 'No valid token available - please login manually first', 
+          error: 'No token found' 
         }
       }
 
-      // Step 2: Wait until 8:27 AM and get utilities
-      const utilitiesResult = await this.waitAndGetUtilities(loginResult.token)
-      if (!utilitiesResult.success) {
-        return { 
-          success: false, 
-          message: 'Failed to get utilities', 
-          error: utilitiesResult.error 
-        }
-      }
-
-      // Step 3: Wait for 8:30 AM and trigger booking
-      const bookingResult = await this.waitAndTriggerBooking(loginResult.token)
+      // Step 2: Trigger booking immediately at 8:30 AM (no delay)
+      const bookingResult = await this.triggerBookingFlow(token)
       if (!bookingResult.success) {
         return { 
           success: false, 
-          message: 'Booking flow failed', 
+          message: 'Booking failed', 
           error: bookingResult.error 
         }
       }
 
       return { 
         success: true, 
-        message: 'Tennis booking automation completed successfully' 
+        message: 'PRECISE 8:30 AM tennis booking completed successfully' 
       }
     } catch (error) {
       console.error('[CRON] Automation error:', error)

@@ -5,97 +5,51 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Loader2, LayoutList, LogOut, ArrowRight, Calendar, Clock } from "lucide-react"
-import { TokenService } from "@/lib/token-service"
+import { Loader2, LayoutList, LogOut, ArrowRight, Calendar, Clock, Copy, Check } from "lucide-react"
+import { useApp } from "@/lib/context/app-context"
 
 export default function UtilitiesPage() {
-  const [isLoadingUtility, setIsLoadingUtility] = useState(false)
-  const [utilityApiResult, setUtilityApiResult] = useState<{
-    success: boolean
-    message: string
-    data?: any
-  } | null>(null)
-
-  const [userData, setUserData] = useState<any>(null)
-  const [currentToken, setCurrentToken] = useState<string | null>(null)
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [tokenCopied, setTokenCopied] = useState(false)
   const router = useRouter()
+  const { state, logout, getUtilityData } = useApp()
 
-  // Check for existing token on component mount
+  // Redirect if not logged in
   useEffect(() => {
-    const token = TokenService.getToken("0979251496")
-    
-    if (token) {
-      setCurrentToken(token)
-      setIsLoggedIn(true)
-      // Auto-call utilities when page loads
-      // handleGetUtility()
-    } else {
-      // No token, redirect to login
+    if (!state.isLoggedIn) {
       router.push("/login")
     }
-  }, [router])
+  }, [state.isLoggedIn, router])
 
   const handleGetUtility = async () => {
-    if (!currentToken) {
-      setUtilityApiResult({
-        success: false,
-        message: "Please login first to get utility data.",
-      })
-      return
-    }
-
-    setIsLoadingUtility(true)
-    setUtilityApiResult(null)
-
-    try {
-      const response = await fetch(`/api/utility?token=${encodeURIComponent(currentToken)}`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      })
-
-      const result = await response.json()
-
-      if (response.ok && result.data) {
-        setUtilityApiResult({
-          success: true,
-          message: "Utility data retrieved successfully! 📊",
-          data: result.data,
-        })
-      } else {
-        setUtilityApiResult({
-          success: false,
-          message: result.message || "Failed to retrieve utility data.",
-        })
-      }
-    } catch (error) {
-      setUtilityApiResult({
-        success: false,
-        message: "Network error. Please check your connection and try again.",
-      })
-    } finally {
-      setIsLoadingUtility(false)
+    if (state.currentToken) {
+      await getUtilityData(state.currentToken)
     }
   }
 
   const handleLogout = () => {
-    TokenService.clearAllTokens()
-    setCurrentToken(null)
-    setIsLoggedIn(false)
-    setUserData(null)
-    setUtilityApiResult(null)
+    logout()
     router.push("/login")
   }
 
   const handleGoToBooking = () => {
-    router.push("/")
+    router.push("/utilities/tennis")
   }
 
-  if (!isLoggedIn) {
+  const handleCopyToken = async () => {
+    if (!state.currentToken) return
+    
+    try {
+      await navigator.clipboard.writeText(state.currentToken)
+      setTokenCopied(true)
+      setTimeout(() => setTokenCopied(false), 2000)
+    } catch (error) {
+      console.error('Failed to copy token:', error)
+    }
+  }
+
+  if (!state.isLoggedIn) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-orange-100 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
           <p>Redirecting to login...</p>
@@ -105,11 +59,11 @@ export default function UtilitiesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 p-4">
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-orange-100 p-4">
       <div className="max-w-4xl mx-auto pt-8">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">Utilities Dashboard</h1>
+          <h1 className="text-3xl font-bold text-gray-800 mb-2">Tennis Booking Dashboard</h1>
           <p className="text-gray-600">Manage your tennis court utilities and bookings</p>
         </div>
 
@@ -120,11 +74,28 @@ export default function UtilitiesPage() {
               <LayoutList className="w-5 h-5 text-orange-600" />
             </div>
             <div>
-              <h2 className="font-semibold text-gray-800">Welcome back!</h2>
+              <h2 className="font-semibold text-gray-800">Welcome {state.userData?.data?.fullName || "back"}!</h2>
             </div>
           </div>
           
           <div className="flex space-x-2">
+            <Button
+              onClick={handleGetUtility}
+              disabled={state.isLoading}
+              className="bg-orange-500 hover:bg-orange-600 text-white"
+            >
+              {state.isLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Loading...
+                </>
+              ) : (
+                <>
+                  <LayoutList className="w-4 h-4 mr-2" />
+                  Get Utility Data
+                </>
+              )}
+            </Button>
             <Button
               onClick={handleGoToBooking}
               variant="outline"
@@ -144,89 +115,85 @@ export default function UtilitiesPage() {
           </div>
         </div>
 
-        {/* Utilities Section */}
-        <div className="grid md:grid-cols-2 gap-6">
-          {/* Utility Data Card */}
-          <Card className="shadow-lg">
-            <CardHeader className="text-center">
-              <div className="mx-auto w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mb-2">
-                <LayoutList className="w-6 h-6 text-orange-600" />
+        {/* Token Management Section */}
+        <Card className="shadow-lg mb-6">
+          <CardHeader className="text-center">
+            <div className="mx-auto w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mb-2">
+              <Copy className="w-6 h-6 text-orange-600" />
+            </div>
+            <CardTitle className="text-lg font-bold text-gray-800">Token Management</CardTitle>
+            <CardDescription>Copy token for Vercel environment variable</CardDescription>
+          </CardHeader>
+
+          <CardContent className="space-y-4">
+            <div className="p-4 bg-gray-50 rounded-lg">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-gray-700 mb-1">Access Token:</p>
+                          <code className="text-xs text-gray-600 break-all">
+                            {state.currentToken ? `${state.currentToken.substring(0, 20)}...` : 'No token available'}
+                          </code>
+                </div>
+                <Button
+                  onClick={handleCopyToken}
+                  disabled={!state.currentToken}
+                  size="sm"
+                  className="ml-4 bg-orange-500 hover:bg-orange-600 text-white"
+                >
+                  {tokenCopied ? (
+                    <>
+                      <Check className="w-4 h-4 mr-2" />
+                      Copied!
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-4 h-4 mr-2" />
+                      Copy
+                    </>
+                  )}
+                </Button>
               </div>
-              <CardTitle className="text-lg font-bold text-gray-800">Utility Data</CardTitle>
-              <CardDescription>Retrieve and view utility information</CardDescription>
-            </CardHeader>
+            </div>
 
-            <CardContent className="space-y-4">
-              {utilityApiResult && (
-                <Alert className={utilityApiResult.success ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50"}>
-                  <AlertDescription className={utilityApiResult.success ? "text-green-800" : "text-red-800"}>
-                    {utilityApiResult.message}
-                  </AlertDescription>
-                </Alert>
-              )}
+            <div className="text-sm text-gray-600">
+              <p className="font-medium mb-2">Instructions:</p>
+              <ol className="list-decimal list-inside space-y-1 text-xs">
+                <li>Click &quot;Copy&quot; to copy the token</li>
+                <li>Go to Vercel Dashboard → Settings → Environment Variables</li>
+                <li>Add new variable: <code className="bg-gray-200 px-1 rounded">VINHOMES_TOKEN</code></li>
+                <li>Paste the copied token as the value</li>
+                <li>Save and redeploy your application</li>
+              </ol>
+            </div>
+          </CardContent>
+        </Card>
 
-              <Button
-                onClick={handleGetUtility}
-                disabled={isLoadingUtility}
-                className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold py-3"
-                size="lg"
-              >
-                {isLoadingUtility ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Loading...
-                  </>
-                ) : (
-                  <>
-                    <LayoutList className="w-4 h-4 mr-2" />
-                    Get Utility Data
-                  </>
-                )}
-              </Button>
+        {/* Utility Result Display */}
+        {state.utilityResult && (
+          <Card className="shadow-lg mb-6">
+            <CardContent className="p-6">
+              <Alert className={state.utilityResult.success ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50"}>
+                <AlertDescription className={state.utilityResult.success ? "text-green-800" : "text-red-800"}>
+                  {state.utilityResult.message}
+                </AlertDescription>
+              </Alert>
 
-              {utilityApiResult?.data && (
+              {state.utilityResult.data && (
                 <div className="mt-4 p-4 bg-gray-50 rounded-lg">
                   <h3 className="font-semibold text-gray-800 mb-2">Utility Data:</h3>
                   <pre className="text-xs text-gray-600 overflow-auto max-h-40">
-                    {JSON.stringify(utilityApiResult.data, null, 2)}
+                    {JSON.stringify(state.utilityResult.data, null, 2)}
                   </pre>
                 </div>
               )}
             </CardContent>
           </Card>
-
-          {/* Quick Actions Card */}
-          <Card className="shadow-lg">
-            <CardHeader className="text-center">
-              <div className="mx-auto w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-2">
-                <Clock className="w-6 h-6 text-blue-600" />
-              </div>
-              <CardTitle className="text-lg font-bold text-gray-800">Quick Actions</CardTitle>
-              <CardDescription>Access booking and other features</CardDescription>
-            </CardHeader>
-
-            <CardContent className="space-y-4">
-              <Button
-                onClick={handleGoToBooking}
-                className="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3"
-                size="lg"
-              >
-                <Calendar className="w-4 h-4 mr-2" />
-                Go to Tennis Booking
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </Button>
-
-              <div className="text-center text-sm text-gray-500">
-                <p>After getting utilities, proceed to book tennis courts</p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+        )}
 
         {/* Footer */}
         <div className="mt-8 text-center">
           <p className="text-sm text-gray-500">
-            Utilities loaded successfully? Proceed to the booking page to reserve your tennis courts.
+            Welcome to your tennis booking dashboard. Use the buttons above to manage utilities and book courts.
           </p>
         </div>
       </div>
