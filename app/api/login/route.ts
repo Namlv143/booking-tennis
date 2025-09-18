@@ -113,10 +113,10 @@ class VinhomesLoginService {
     const url = `${VinhomesLoginService.BASE_URL}${VinhomesLoginService.LOGIN_ENDPOINT}`
     const headers = this.getHeaders()
 
-    console.log("[v0] Login API - Starting request")
-    console.log("[v0] URL:", url)
-    console.log("[v0] Headers:", headers)
-    console.log("[v0] Payload:", { username: loginData.username, password: "***" })
+    console.log("Login API - Starting request")
+    console.log("URL:", url)
+    console.log("Headers:", headers)
+    console.log("Payload:", { username: loginData.username, password: "***" })
 
     try {
       const response = await fetch(url, {
@@ -131,11 +131,11 @@ class VinhomesLoginService {
         keepalive: false,
       })
 
-      console.log("[v0] Response status:", response.status)
-      console.log("[v0] Response headers:", Object.fromEntries(response.headers.entries()))
+      console.log("Response status:", response.status)
+      console.log("Response headers:", Object.fromEntries(response.headers.entries()))
 
       const responseText = await response.text()
-      console.log("[v0] Response body:", responseText)
+      console.log("Response body:", responseText)
 
       let responseData: LoginApiResponse
       try {
@@ -155,42 +155,8 @@ class VinhomesLoginService {
       // Note: Token storage is now handled client-side
       return result
     } catch (error) {
-      console.error("[v0] Login API error:", error)
+      console.error("Login API error:", error)
       throw error
-    }
-  }
-
-  // Additional API calls after successful login
-  private async callUtility(token: string): Promise<UtilityResponse> {
-    try {
-      const url = `${VinhomesLoginService.BASE_URL}/api/vhr/utility/v0/utility`
-      const headers = this.getHeaders(token)
-
-      console.log("[v0] Calling utility API...")
-
-      const response = await fetch(url, {
-        method: "GET",
-        headers,
-        cache: "no-store",
-        credentials: "omit",
-        mode: "cors",
-        redirect: "follow",
-        referrerPolicy: "no-referrer",
-        keepalive: false,
-      })
-
-      if (!response.ok) {
-        const errorText = await response.text()
-        console.log("[v0] Utility API error:", response.status, errorText)
-        return { error: `HTTP ${response.status}: ${errorText}` }
-      }
-
-      const data = await response.json()
-      console.log("[v0] Utility API success")
-      return { data }
-    } catch (error) {
-      console.error("[v0] Utility API failed:", error)
-      return { error: String(error) }
     }
   }
 
@@ -199,7 +165,7 @@ class VinhomesLoginService {
       const url = `${VinhomesLoginService.BASE_URL}/api/vhr/customer/v0/editor-config/`
       const headers = this.getHeaders(token)
 
-      console.log("[v0] Calling editor-config API...")
+      console.log("Calling editor-config API...")
       
       const response = await fetch(url, {
         method: "GET",
@@ -214,15 +180,15 @@ class VinhomesLoginService {
 
       if (!response.ok) {
         const errorText = await response.text()
-        console.log("[v0] Editor-config API error:", response.status, errorText)
+        console.log("Editor-config API error:", response.status, errorText)
         return { error: `HTTP ${response.status}: ${errorText}` }
       }
 
       const data = await response.json()
-      console.log("[v0] Editor-config API success")
+      console.log("Editor-config API success")
       return { data }
     } catch (error) {
-      console.error("[v0] Editor-config API failed:", error)
+      console.error("Editor-config API failed:", error)
       return { error: String(error) }
     }
   }
@@ -232,7 +198,7 @@ class VinhomesLoginService {
       const url = `${VinhomesLoginService.BASE_URL}/api/vhr/customer/v0/user/me`
       const headers = this.getHeaders(token)
 
-      console.log("[v0] Calling user/me API...")
+      console.log("Calling user/me API...")
       
       const response = await fetch(url, {
         method: "GET",
@@ -247,15 +213,15 @@ class VinhomesLoginService {
 
       if (!response.ok) {
         const errorText = await response.text()
-        console.log("[v0] User/me API error:", response.status, errorText)
+        console.log("User/me API error:", response.status, errorText)
         return { error: `HTTP ${response.status}: ${errorText}` }
       }
 
       const data = await response.json()
-      console.log("[v0] User/me API success")
+      console.log("User/me API success")
       return { data }
     } catch (error) {
-      console.error("[v0] User/me API failed:", error)
+      console.error("User/me API failed:", error)
       return { error: String(error) }
     }
   }
@@ -268,7 +234,7 @@ class VinhomesLoginService {
     if (loginResult.success && loginResult.data?.data?.accessToken) {
       const token = loginResult.data.data.accessToken
       
-      console.log("[v0] Login successful, calling additional APIs...")
+      console.log("Login successful, calling additional APIs...")
 
       // Call all three APIs in parallel for better performance
       const [editorConfig, userMe] = await Promise.all([
@@ -280,7 +246,6 @@ class VinhomesLoginService {
       loginResult.editorConfig = editorConfig
       loginResult.userMe = userMe
       
-      console.log("[v0] Additional API calls completed")
     }
     
     return loginResult
@@ -303,7 +268,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json(result)
   } catch (error) {
-    console.error("[v0] Login API error:", error)
+    console.error("Login API error:", error)
     return NextResponse.json(
       {
         error: "Request failed",

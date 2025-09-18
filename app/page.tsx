@@ -1,12 +1,11 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Loader2, Calendar, Clock, MapPin, LogOut, Settings, LayoutList } from "lucide-react"
+import { Loader2, Calendar, LogOut, LayoutList, ArrowRight } from "lucide-react"
 import { TokenService } from "@/lib/token-service"
 
 export default function TennisBookingPage() {
@@ -40,92 +39,43 @@ export default function TennisBookingPage() {
     message: string
   } | null>(null)
 
-  const [isLoggingIn, setIsLoggingIn] = useState(false)
-  const [loginResult, setLoginResult] = useState<{
-    success: boolean
-    message: string
-    data?: any
-  } | null>(null)
-
-  const [username, setUsername] = useState("")
-  const [password, setPassword] = useState("")
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [currentToken, setCurrentToken] = useState<string | null>(null)
   const [userData, setUserData] = useState<any>(null)
-  const [editorConfig, setEditorConfig] = useState<any>(null)
-  const [utilityData, setUtilityData] = useState<any>(null)
+  const router = useRouter()
 
-  const [isLoadingUtility, setIsLoadingUtility] = useState(false)
-  const [utilityApiResult, setUtilityApiResult] = useState<{
-    success: boolean
-    message: string
-    data?: any
-  } | null>(null)
-
-  // Check for existing token on component mount and auto-call APIs
+  // Check for existing token on component mount
   useEffect(() => {
-    const token = TokenService.getToken(username || "0979251496");
+    const token = TokenService.getToken("0979251496")
     
     if (token) {
       setCurrentToken(token)
       setIsLoggedIn(true)
       
-      // Auto-call APIs when token exists
-      handleAutoLogin(token)
+      // Load user data
+      loadUserData(token)
+    } else {
+      // No token, redirect to login
+      router.push("/login")
     }
-  }, [username])
+  }, [router])
 
-  const handleAutoLogin = async (token: string) => {
+  const loadUserData = async (token: string) => {
     try {
-      console.log("[v0] Auto-login: Calling APIs with existing token...")
-      
-      // Call both APIs in parallel
-      const [editorConfigResponse, userMeResponse] = await Promise.all([
-        fetch("/api/editor-config", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token }),
-        }),
-        fetch("/api/user-me", {
-          method: "POST", 
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token }),
-        })
-      ])
+      const userMeResponse = await fetch("/api/user-me", {
+        method: "POST", 
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token }),
+      })
 
-      let hasSuccess = false
-      // Process editor config response
-      if (editorConfigResponse.ok) {
-        const editorConfigResult = await editorConfigResponse.json()
-        if (editorConfigResult.data) {
-          setEditorConfig(editorConfigResult.data)
-          console.log("[v0] Auto-login: Editor config loaded")
-          hasSuccess = true
-        }
-      }
-
-      // Process user/me response
       if (userMeResponse.ok) {
         const userMeResult = await userMeResponse.json()
         if (userMeResult.data) {
           setUserData(userMeResult.data)
-          console.log("[v0] Auto-login: User data loaded")
-          hasSuccess = true
         }
       }
-
-      // If no APIs succeeded, clear token and reset state
-      if (!hasSuccess) {
-        console.log("[v0] Auto-login: No APIs succeeded, clearing token and resetting state")
-        handleLogout()
-        return
-      }
-
-      console.log("[v0] Auto-login: APIs completed successfully")
     } catch (error) {
-      console.error("[v0] Auto-login: Failed to call APIs:", error)
-      console.log("[v0] Auto-login: Error occurred, clearing token and resetting state")
-      handleLogout()
+      console.error("Failed to load user data:", error)
     }
   }
 
@@ -374,253 +324,59 @@ export default function TennisBookingPage() {
     }
   }
 
-  const handleGetUtility = async () => {
-    if (!currentToken) {
-      setUtilityApiResult({
-        success: false,
-        message: "Please login first to get utility data.",
-      })
-      return
-    }
-
-    setIsLoadingUtility(true)
-    setUtilityApiResult(null)
-
-    try {
-      const response = await fetch(`/api/utility?token=${encodeURIComponent(currentToken)}`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      })
-
-      const result = await response.json()
-
-      if (response.ok && result.data) {
-        setUtilityApiResult({
-          success: true,
-          message: "Utility data retrieved successfully! 📊",
-          data: result.data,
-        })
-      } else {
-        setUtilityApiResult({
-          success: false,
-          message: result.message || "Failed to retrieve utility data.",
-        })
-      }
-    } catch (error) {
-      setUtilityApiResult({
-        success: false,
-        message: "Network error. Please check your connection and try again.",
-      })
-    } finally {
-      setIsLoadingUtility(false)
-    }
-  }
-
-  const handleLogin = async () => {
-    setIsLoggingIn(true)
-    setLoginResult(null)
-
-    try {
-      const response = await fetch("/api/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ username, password }),
-      })
-
-      const result = await response.json()
-
-      if (response.ok && result.success && result.data?.data?.accessToken) {
-        // Store token in localStorage
-        TokenService.storeToken(username, result.data.data.accessToken)
-        setCurrentToken(result.data.data.accessToken)
-        setIsLoggedIn(true)
-        
-        // Store additional user data
-        if (result.userMe?.data) {
-          setUserData(result.userMe.data)
-        }
-        if (result.editorConfig?.data) {
-          setEditorConfig(result.editorConfig.data)
-        }
-        if (result.utility?.data) {
-          setUtilityData(result.utility.data)
-        }
-        
-        setLoginResult({
-          success: true,
-          message: "Login successful! Token stored in localStorage.",
-          data: result,
-        })
-      } else {
-        setLoginResult({
-          success: false,
-          message: result.message || "Login failed. Please try again.",
-          data: result,
-        })
-      }
-    } catch (error) {
-      setLoginResult({
-        success: false,
-        message: "Network error. Please check your connection and try again.",
-      })
-    } finally {
-      setIsLoggingIn(false)
-    }
-  }
 
   const handleLogout = () => {
-    TokenService.clearAllTokens();
+    TokenService.clearAllTokens()
     setCurrentToken(null)
     setIsLoggedIn(false)
     setUserData(null)
-    setEditorConfig(null)
-    setUtilityData(null)
-    setLoginResult(null)
     setBookingResult(null)
     setBookingResult2(null)
     setBookingResult3(null)
     setBookingResult4(null)
     setBookingResult5(null)
-    setUtilityApiResult(null)
+    router.push("/login")
+  }
+
+  if (!isLoggedIn) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
+          <p>Redirecting to login...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 p-4">
-      <div className="max-w-4xl mx-auto pt-20">
-        
-        {/* Login and Utility sections in same row */}
-        <div className="grid md:grid-cols-2 gap-6 mb-8">
-          {/* Login Section */}
-          <Card className="shadow-lg">
-            <CardHeader className="text-center p-2">
-              <div className="mx-auto w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mb-1">
-                <LogOut className="w-6 h-6 text-orange-600" />
-              </div>
-              <CardTitle className="text-lg font-bold text-gray-800">
-                {isLoggedIn ? userData?.data?.fullName : "Login"}
-              </CardTitle>
-
-              {isLoggedIn && (
-                <div className="mt-2">
-                  <Button
-                    onClick={handleLogout}
-                    variant="outline"
-                    size="sm"
-                    className="text-red-600 border-red-200 hover:bg-red-50 px-3 py-1 text-xs"
-                  >
-                    <LogOut className="w-3 h-3 mr-1" />
-                    Logout
-                  </Button>
-                </div>
-              )}
-            </CardHeader>
-
-            <CardContent className="space-y-2 p-4">
-              {!isLoggedIn && <div className="space-y-2">
-                <div className="space-y-1">
-                  <Label htmlFor="username" className="text-xs">Username</Label>
-                  <Input
-                    id="username"
-                    type="text"
-                    placeholder="Enter username"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    className="text-sm py-1"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="password" className="text-xs">Password</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    placeholder="Enter password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="text-sm py-1"
-                  />
-                </div>
-              </div>}
-
-
-              {!isLoggedIn && <Button
-                onClick={handleLogin}
-                disabled={isLoggingIn || !username || !password || isLoggedIn}
-                className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold py-4 text-sm"
-                size="default"
-              >
-                {isLoggingIn ? (
-                  <>
-                    <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-                    Login...
-                  </>
-                ) : (
-                  "Login"
-                )}
-              </Button>}
-            </CardContent>
-          </Card>
-
-          {/* Utility API Section */}
-          {isLoggedIn && (
-            <Card className="shadow-lg">
-              <CardHeader className="text-center p-2">
-                <div className="mx-auto w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mb-1">
-                  <LayoutList className="w-6 h-6 text-orange-600" />
-                </div>
-                <CardTitle className="text-lg font-bold text-gray-800">Utilities</CardTitle>
-              </CardHeader>
-
-              <CardContent className="space-y-2 p-2">
-                {utilityApiResult && (
-                  <Alert className={utilityApiResult.success ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50"}>
-                    <AlertDescription className={utilityApiResult.success ? "text-green-800" : "text-red-800"}>
-                      <div className="text-xs">{utilityApiResult.message}</div>
-                    </AlertDescription>
-                  </Alert>
-                )}
-
-                <Button
-                  onClick={handleGetUtility}
-                  disabled={isLoadingUtility}
-                  className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold p-4 text-sm"
-                  size="lg"
-                >
-                  {isLoadingUtility ? (
-                    <>
-                      <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-                      Loading...
-                    </>
-                  ) : (
-                    <>
-                      DS Tiện ích
-                    </>
-                  )}
-                </Button>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Placeholder for logged out state */}
-          {!isLoggedIn && (
-            <Card className="shadow-lg opacity-50">
-              <CardHeader className="text-center p-2">
-                <div className="mx-auto w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-1">
-                  <LayoutList className="w-6 h-6 text-gray-400" />
-                </div>
-                <CardTitle className="text-lg font-bold text-gray-400">Utility Data</CardTitle>
-                <CardDescription className="text-gray-400">Login required to access utilities</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center text-gray-500 py-8">
-                  Please login to access utility data
-                </div>
-              </CardContent>
-            </Card>
-          )}
+      <div className="max-w-4xl mx-auto pt-8">
+        {/* Header */}
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-800 mb-2">Tennis Court Booking</h1>
+            <p className="text-gray-600">Welcome back, {userData?.data?.fullName || "User"}!</p>
+          </div>
+          
+          <div className="flex space-x-2">
+            <Button
+              onClick={() => router.push("/utilities")}
+              variant="outline"
+              className="text-orange-600 border-orange-200 hover:bg-orange-50"
+            >
+              <LayoutList className="w-4 h-4 mr-2" />
+              Utilities
+            </Button>
+            <Button
+              onClick={handleLogout}
+              variant="outline"
+              className="text-red-600 border-red-200 hover:bg-red-50"
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              Logout
+            </Button>
+          </div>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
@@ -812,3 +568,4 @@ export default function TennisBookingPage() {
     </div>
   )
 }
+

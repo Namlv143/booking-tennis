@@ -120,7 +120,7 @@ class VinhomesTennisBooking {
 
     const headers = this.getHeaders(method)
 
-    console.log("[v0] Making request:", {
+    console.log("Making request:", {
       method,
       url: url.toString(),
       headers: { ...headers, "x-vinhome-token": "***" }, // Hide token in logs
@@ -132,31 +132,29 @@ class VinhomesTennisBooking {
         method,
         headers,
         body: data ? JSON.stringify(data) : undefined,
-        // Mimic mobile app behavior more closely
         cache: "no-store",
         redirect: "manual",
         referrerPolicy: "no-referrer",
         mode: "cors",
         credentials: "omit",
         keepalive: false,
-        // Additional options to match mobile app behavior
         integrity: undefined,
         signal: undefined,
       })
 
-      console.log("[v0] Response status:", response.status, response.statusText)
+      console.log("Response status:", response.status, response.statusText)
 
       if (!response.ok) {
         const errorText = await response.text()
-        console.log("[v0] Error response body:", errorText)
+        console.log("Error response body:", errorText)
         return { error: `HTTP ${response.status}: ${errorText}` }
       }
 
       const responseData = await response.json()
-      console.log("[v0] Response data:", responseData)
+      console.log("Response data:", responseData)
       return responseData
     } catch (error) {
-      console.log("[v0] Request failed with error:", error)
+      console.log("Request failed with error:", error)
       return { error: String(error) }
     }
   }
