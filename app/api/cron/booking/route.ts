@@ -3,7 +3,7 @@ import { BOOKING_CONFIG, getVietnamTime, getWaitTimeUntilBooking } from '@/lib/b
 
 // Types for the booking automation
 interface LoginCredentials {
-  phone: string
+  username: string
   password: string
 }
 
@@ -14,10 +14,13 @@ interface BookingData {
 }
 
 class TennisBookingAutomation {
-  private static readonly LOGIN_CREDENTIALS: LoginCredentials = BOOKING_CONFIG.credentials
-  private static readonly BASE_URL = BOOKING_CONFIG.api.baseUrl
+  private static readonly LOGIN_CREDENTIALS: LoginCredentials = {
+    username: '0979251496',
+    password: 'Nam@2025'
+  }
+  private static readonly BASE_URL = 'https://vh.vinhomes.vn'
 
-  // Step 1: Logout and login with credentials
+  // Step 1: Logout and login with credentials (exactly like manual login)
   private async performLogin(): Promise<{ success: boolean; token?: string; error?: string }> {
     try {
       console.log('[CRON] Starting login process...')
@@ -25,20 +28,32 @@ class TennisBookingAutomation {
       // First, logout if there's an existing session
       await this.logout()
       
-      // Login with credentials
-      const loginUrl = `${TennisBookingAutomation.BASE_URL}${BOOKING_CONFIG.api.login}`
+      // Login using the same API as manual login
+      const loginUrl = `${TennisBookingAutomation.BASE_URL}/api/vhr/iam/v0/security/oauth-login`
       const loginData = {
-        phone: TennisBookingAutomation.LOGIN_CREDENTIALS.phone,
+        username: TennisBookingAutomation.LOGIN_CREDENTIALS.username,
         password: TennisBookingAutomation.LOGIN_CREDENTIALS.password
       }
 
       const response = await fetch(loginUrl, {
         method: 'POST',
         headers: {
-          ...BOOKING_CONFIG.headers,
-          'Content-Type': 'application/json'
+          'accept-encoding': 'gzip',
+          'accept-language': 'vi',
+          'app-version-name': '1.5.5',
+          'content-type': 'application/json; charset=UTF-8',
+          'device-id': '51a9e0d3fcb8574c',
+          'device-inf': 'PHY110 OPPO 35',
+          'host': 'vh.vinhomes.vn',
+          'user-agent': 'Dart/3.7 (dart:io)',
         },
-        body: JSON.stringify(loginData)
+        body: JSON.stringify(loginData),
+        cache: 'no-store',
+        credentials: 'omit',
+        mode: 'cors',
+        redirect: 'follow',
+        referrerPolicy: 'no-referrer',
+        keepalive: false,
       })
 
       if (!response.ok) {
@@ -48,7 +63,7 @@ class TennisBookingAutomation {
       }
 
       const loginResult = await response.json()
-      const token = loginResult.data?.token || loginResult.token
+      const token = loginResult.data?.accessToken
 
       if (!token) {
         console.error('[CRON] No token received from login')
@@ -74,18 +89,31 @@ class TennisBookingAutomation {
     }
   }
 
-  // Step 3: Get utilities after login
+  // Step 3: Get utilities after login (exactly like handleGetUtility)
   private async getUtilities(token: string): Promise<{ success: boolean; data?: any; error?: string }> {
     try {
       console.log('[CRON] Getting utilities...')
       
-      const utilitiesUrl = `${TennisBookingAutomation.BASE_URL}${BOOKING_CONFIG.api.utilities}`
+      const utilitiesUrl = `${TennisBookingAutomation.BASE_URL}/api/vhr/utility/v0/utility`
       const response = await fetch(utilitiesUrl, {
         method: 'GET',
         headers: {
-          ...BOOKING_CONFIG.headers,
-          'X-Vinhome-Token': token
-        }
+          'accept-encoding': 'gzip',
+          'accept-language': 'vi',
+          'app-version-name': '1.5.5',
+          'content-type': 'application/json; charset=UTF-8',
+          'device-id': '51a9e0d3fcb8574c',
+          'device-inf': 'PHY110 OPPO 35',
+          'host': 'vh.vinhomes.vn',
+          'user-agent': 'Dart/3.7 (dart:io)',
+          'x-vinhome-token': token
+        },
+        cache: 'no-store',
+        credentials: 'omit',
+        mode: 'cors',
+        redirect: 'follow',
+        referrerPolicy: 'no-referrer',
+        keepalive: false,
       })
 
       if (!response.ok) {
@@ -128,24 +156,143 @@ class TennisBookingAutomation {
     }
   }
 
-  // Step 5: Trigger the actual booking flow
+  // Step 5: Trigger the actual booking flow (exactly like manual buttons 1 and 2)
   private async triggerBookingFlow(token: string): Promise<{ success: boolean; error?: string }> {
     try {
-      console.log('[CRON] Triggering booking flow...')
+      console.log('[CRON] Triggering booking flow for cards 1 and 2...')
       
-      // This is where you would implement the actual booking logic
-      // For now, we'll simulate the booking process
+      // Book Card 1: S1.01 18h-20h (placeId: 801, placeUtilityId: 625, timeConstraintId: 575)
+      console.log('[CRON] Booking Card 1: S1.01 18h-20h...')
+      const booking1Result = await this.makeBookingRequest(token, {
+        placeId: 801,
+        placeUtilityId: 625,
+        timeConstraintId: 575
+      })
       
-      // Example: Get available courts
-      // Example: Select preferred court and time
-      // Example: Submit booking request
+      if (booking1Result.success) {
+        console.log('[CRON] Card 1 booking successful!')
+      } else {
+        console.error('[CRON] Card 1 booking failed:', booking1Result.error)
+      }
       
-      console.log('[CRON] Booking flow completed successfully')
-      return { success: true }
+      // Book Card 2: S1.02 18h-20h (placeId: 802, placeUtilityId: 626, timeConstraintId: 575)
+      console.log('[CRON] Booking Card 2: S1.02 18h-20h...')
+      const booking2Result = await this.makeBookingRequest(token, {
+        placeId: 802,
+        placeUtilityId: 626,
+        timeConstraintId: 575
+      })
+      
+      if (booking2Result.success) {
+        console.log('[CRON] Card 2 booking successful!')
+      } else {
+        console.error('[CRON] Card 2 booking failed:', booking2Result.error)
+      }
+      
+      // Return success if at least one booking succeeded
+      const overallSuccess = booking1Result.success || booking2Result.success
+      const errorMessage = !overallSuccess ? 'Both bookings failed' : undefined
+      
+      console.log(`[CRON] Booking flow completed. Success: ${overallSuccess}`)
+      return { success: overallSuccess, error: errorMessage }
     } catch (error) {
       console.error('[CRON] Booking flow error:', error)
       return { success: false, error: String(error) }
     }
+  }
+
+  // Helper method to make individual booking requests
+  private async makeBookingRequest(token: string, bookingParams: {
+    placeId: number
+    placeUtilityId: number
+    timeConstraintId: number
+  }): Promise<{ success: boolean; error?: string; data?: any }> {
+    try {
+      const response = await fetch(`${TennisBookingAutomation.BASE_URL}/api/vhr/utility/v0/customer-utility/booking`, {
+        method: 'POST',
+        headers: {
+          'accept-encoding': 'gzip',
+          'accept-language': 'vi',
+          'app-version-name': '1.5.5',
+          'content-type': 'application/json; charset=UTF-8',
+          'device-id': '51a9e0d3fcb8574c',
+          'device-inf': 'PHY110 OPPO 35',
+          'host': 'vh.vinhomes.vn',
+          'user-agent': 'Dart/3.7 (dart:io)',
+          'x-vinhome-token': token
+        },
+        body: JSON.stringify({
+          bookingRequests: [{
+            bookingDate: this.getBookingDate(),
+            placeId: bookingParams.placeId,
+            timeConstraintId: bookingParams.timeConstraintId,
+            utilityId: 75,
+            residentTicket: 4,
+            residentChildTicket: null,
+            guestTicket: null,
+            guestChildTicket: null,
+          }],
+          paymentMethod: null,
+          vinClubPoint: null,
+          deviceType: 'ANDROID',
+          cs: await this.generateChecksum({
+            bookingRequests: [{
+              bookingDate: this.getBookingDate(),
+              placeId: bookingParams.placeId,
+              timeConstraintId: bookingParams.timeConstraintId,
+              utilityId: 75,
+              residentTicket: 4,
+              residentChildTicket: null,
+              guestTicket: null,
+              guestChildTicket: null,
+            }],
+            paymentMethod: null,
+            vinClubPoint: null,
+            deviceType: 'ANDROID'
+          })
+        }),
+        cache: 'no-store',
+        credentials: 'omit',
+        mode: 'cors',
+        redirect: 'follow',
+        referrerPolicy: 'no-referrer',
+        keepalive: false,
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        return { success: false, error: `HTTP ${response.status}: ${errorText}` }
+      }
+
+      const result = await response.json()
+      const success = result?.data?.transactionId || result?.data?.userId
+      
+      return { success: !!success, data: result }
+    } catch (error) {
+      return { success: false, error: String(error) }
+    }
+  }
+
+  // Helper method to get booking date (tomorrow)
+  private getBookingDate(): number {
+    const now = new Date()
+    const vietnamTime = new Date(now.getTime() + 7 * 60 * 60 * 1000) // UTC+7
+    const bookingDate = new Date(vietnamTime.getTime() + 24 * 60 * 60 * 1000) // Tomorrow
+    return bookingDate.getTime()
+  }
+
+  // Helper method to generate checksum
+  private async generateChecksum(bookingData: any): Promise<string> {
+    const booking = bookingData.bookingRequests[0]
+    const numericSum = booking.utilityId + booking.placeId + booking.bookingDate + booking.timeConstraintId
+    const secretKey = "tqVtg9GqwUiKbHqkSG4BpMyXPu3BbpUHmzOqgEQa1KYJZ1Ckv8@@@"
+    const interpolatedString = `${numericSum}${secretKey}`
+
+    const encoder = new TextEncoder()
+    const data = encoder.encode(interpolatedString)
+    const hashBuffer = await crypto.subtle.digest("SHA-256", data)
+    const hashArray = Array.from(new Uint8Array(hashBuffer))
+    return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("")
   }
 
   // Main automation method

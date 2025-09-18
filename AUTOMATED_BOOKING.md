@@ -6,11 +6,12 @@ This system automatically books tennis courts at 8:30 AM every day using a preci
 
 - **8:25 AM**: Cron job triggers
   - Logout from any existing session
-  - Login with credentials (0979251496/Nam@2025)
-  - Call utilities API to get available data
+  - Login with credentials (0979251496/Nam@2025) - **exactly like manual login**
+  - Call utilities API to get available data - **exactly like handleGetUtility**
 - **8:30 AM**: Precise timing trigger
-  - Execute the booking flow
-  - Submit booking request
+  - Execute booking flow for **Card 1: S1.01 18h-20h** (placeId: 801, placeUtilityId: 625, timeConstraintId: 575)
+  - Execute booking flow for **Card 2: S1.02 18h-20h** (placeId: 802, placeUtilityId: 626, timeConstraintId: 575)
+  - Submit both booking requests simultaneously
 
 ## 🔧 **Configuration**
 
@@ -19,14 +20,14 @@ This system automatically books tennis courts at 8:30 AM every day using a preci
 - **Timezone**: Asia/Ho_Chi_Minh (Vietnam time)
 
 ### **Credentials**
-- **Phone**: 0979251496
+- **Username**: 0979251496
 - **Password**: Nam@2025
 
 ### **API Endpoints**
 - **Base URL**: https://vh.vinhomes.vn
-- **Login**: `/api/vhr/auth/login`
-- **Utilities**: `/api/vhr/utility/v0/utility`
-- **Booking**: `/api/vhr/booking` (to be implemented)
+- **Login**: `/api/vhr/iam/v0/security/oauth-login` (exactly like manual login)
+- **Utilities**: `/api/vhr/utility/v0/utility` (exactly like handleGetUtility)
+- **Booking**: `/api/vhr/utility/v0/customer-utility/booking` (exactly like manual booking buttons)
 
 ## 📁 **Files Structure**
 

@@ -2,7 +2,7 @@
 export const BOOKING_CONFIG = {
   // Login credentials
   credentials: {
-    phone: '0979251496',
+    username: '0979251496',
     password: 'Nam@2025'
   },
   
@@ -20,9 +20,9 @@ export const BOOKING_CONFIG = {
   // API endpoints
   api: {
     baseUrl: 'https://vh.vinhomes.vn',
-    login: '/api/vhr/auth/login',
+    login: '/api/vhr/iam/v0/security/oauth-login',
     utilities: '/api/vhr/utility/v0/utility',
-    booking: '/api/vhr/booking' // Update with actual booking endpoint
+    booking: '/api/vhr/utility/v0/customer-utility/booking'
   },
   
   // Headers for API requests
@@ -38,14 +38,28 @@ export const BOOKING_CONFIG = {
     'User-Agent': 'Dart/3.7 (dart:io)'
   },
   
-  // Booking preferences (update these based on your needs)
+  // Booking preferences (exactly like manual buttons 1 and 2)
   bookingPreferences: {
-    // Preferred court ID (update with actual court ID)
-    preferredCourtId: 'court_1',
-    // Preferred time slots (update with actual time slots)
-    preferredTimeSlots: ['08:30', '09:00', '09:30'],
-    // Booking duration in minutes
-    duration: 60,
+    // Card 1: S1.01 18h-20h
+    card1: {
+      placeId: 801,
+      placeUtilityId: 625,
+      timeConstraintId: 575,
+      courtName: 'S1.01',
+      timeSlot: '18h-20h'
+    },
+    // Card 2: S1.02 18h-20h
+    card2: {
+      placeId: 802,
+      placeUtilityId: 626,
+      timeConstraintId: 575,
+      courtName: 'S1.02',
+      timeSlot: '18h-20h'
+    },
+    // Common booking settings
+    utilityId: 75,
+    residentTicket: 4,
+    deviceType: 'ANDROID',
     // Retry attempts if booking fails
     maxRetries: 3
   }
