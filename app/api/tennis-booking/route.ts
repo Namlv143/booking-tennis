@@ -144,10 +144,7 @@ class VinhomesTennisBooking {
         referrerPolicy: "strict-origin-when-cross-origin",
         mode: "cors",
         credentials: "omit",
-        keepalive: true, // Changed to true to maintain connection like mobile apps
-        // Additional options to match mobile app behavior
-        integrity: undefined,
-        signal: undefined,
+        keepalive: false,
       })
 
       console.log("[v0] Response status:", response.status, response.statusText)
