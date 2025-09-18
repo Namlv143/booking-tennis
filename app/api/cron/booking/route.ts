@@ -21,14 +21,16 @@ class TennisBookingAutomation {
       const storedToken = process.env.VINHOMES_TOKEN
       
       if (!storedToken) {
-        console.log('[CRON] No stored token found - please set VINHOMES_TOKEN environment variable')
+        console.log('[CRON] ❌ NO STORED TOKEN FOUND - please set VINHOMES_TOKEN environment variable')
+        console.log('[CRON] Available env vars:', Object.keys(process.env).filter(key => key.includes('VINHOMES')))
         return null
       }
 
-      console.log('[CRON] Using stored token for booking')
+      console.log('[CRON] ✅ STORED TOKEN FOUND - length:', storedToken.length)
+      console.log('[CRON] Token prefix:', storedToken.substring(0, 10) + '...')
       return storedToken
     } catch (error) {
-      console.error('[CRON] Error getting existing token:', error)
+      console.error('[CRON] ❌ Error getting existing token:', error)
       return null
     }
   }
@@ -261,14 +263,19 @@ export const dynamic = 'force-dynamic'
 export async function GET() {
   try {
     const vietnamTime = getVietnamTime()
-    console.log(`[GITHUB-ACTIONS-CRON] Tennis booking triggered at ${vietnamTime.toISOString()} (Vietnam time)`)
-    console.log('[GITHUB-ACTIONS-CRON] Source: GitHub Actions workflow')
+    console.log(`[GITHUB-ACTIONS-CRON] 🎾 Tennis booking triggered at ${vietnamTime.toISOString()} (Vietnam time)`)
+    console.log('[GITHUB-ACTIONS-CRON] 🚀 Source: GitHub Actions workflow')
+    console.log('[GITHUB-ACTIONS-CRON] 🎯 Target: Simultaneous booking for S1.01 and S1.02 (18h-20h)')
     
+    console.log('[GITHUB-ACTIONS-CRON] 🔄 Starting automation...')
     const automation = new TennisBookingAutomation()
     const result = await automation.runAutomation()
     
-    console.log(`[GITHUB-ACTIONS-CRON] Result: ${result.success ? 'SUCCESS' : 'FAILED'}`)
-    console.log(`[GITHUB-ACTIONS-CRON] Message: ${result.message}`)
+    console.log(`[GITHUB-ACTIONS-CRON] 📊 Final Result: ${result.success ? '✅ SUCCESS' : '❌ FAILED'}`)
+    console.log(`[GITHUB-ACTIONS-CRON] 💬 Message: ${result.message}`)
+    if (result.error) {
+      console.log(`[GITHUB-ACTIONS-CRON] ⚠️  Error Details: ${result.error}`)
+    }
     
     return NextResponse.json({
       success: result.success,
@@ -279,7 +286,7 @@ export async function GET() {
       timezone: 'Asia/Ho_Chi_Minh'
     })
   } catch (error) {
-    console.error('[GITHUB-ACTIONS-CRON] Cron job error:', error)
+    console.error('[GITHUB-ACTIONS-CRON] ❌ Cron job error:', error)
     return NextResponse.json(
       {
         success: false,
