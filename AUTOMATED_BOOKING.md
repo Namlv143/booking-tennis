@@ -7,6 +7,7 @@ This system automatically books tennis courts at 8:30 AM every day using a preci
 - **8:25 AM**: Cron job triggers
   - Logout from any existing session
   - Login with credentials (0979251496/Nam@2025) - **exactly like manual login**
+- **8:27 AM**: Utilities call
   - Call utilities API to get available data - **exactly like handleGetUtility**
 - **8:30 AM**: Precise timing trigger
   - Execute booking flow for **Card 1: S1.01 18h-20h** (placeId: 801, placeUtilityId: 625, timeConstraintId: 575)

@@ -10,6 +10,11 @@ export const BOOKING_CONFIG = {
   timing: {
     // Cron schedule: 8:25 AM every day
     cronSchedule: '25 8 * * *',
+    // Utilities call time: 8:27 AM
+    utilitiesTime: {
+      hour: 8,
+      minute: 27
+    },
     // Target booking time: 8:30 AM
     targetBookingTime: {
       hour: 8,

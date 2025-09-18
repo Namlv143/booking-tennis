@@ -300,7 +300,7 @@ class TennisBookingAutomation {
     try {
       console.log('[CRON] Starting tennis booking automation...')
       
-      // Step 1: Login
+      // Step 1: Login at 8:25 AM
       const loginResult = await this.performLogin()
       if (!loginResult.success || !loginResult.token) {
         return { 
@@ -310,8 +310,8 @@ class TennisBookingAutomation {
         }
       }
 
-      // Step 2: Get utilities
-      const utilitiesResult = await this.getUtilities(loginResult.token)
+      // Step 2: Wait until 8:27 AM and get utilities
+      const utilitiesResult = await this.waitAndGetUtilities(loginResult.token)
       if (!utilitiesResult.success) {
         return { 
           success: false, 
@@ -341,6 +341,38 @@ class TennisBookingAutomation {
         message: 'Automation failed', 
         error: String(error) 
       }
+    }
+  }
+
+  // Step 2: Wait until 8:27 AM and get utilities
+  private async waitAndGetUtilities(token: string): Promise<{ success: boolean; data?: any; error?: string }> {
+    try {
+      console.log('[CRON] Waiting for 8:27 AM to call utilities...')
+      
+      // Calculate time until 8:27 AM
+      const now = getVietnamTime()
+      const targetTime = new Date(now)
+      targetTime.setHours(8, 27, 0, 0) // 8:27 AM
+      
+      // If it's already past 8:27 AM, schedule for next day
+      if (now >= targetTime) {
+        targetTime.setDate(targetTime.getDate() + 1)
+      }
+      
+      const waitTime = targetTime.getTime() - now.getTime()
+      
+      if (waitTime > 0) {
+        console.log(`[CRON] Waiting ${Math.round(waitTime / 1000)} seconds until 8:27 AM...`)
+        await new Promise(resolve => setTimeout(resolve, waitTime))
+      }
+      
+      console.log('[CRON] 8:27 AM reached! Calling utilities...')
+      
+      // Now call utilities
+      return await this.getUtilities(token)
+    } catch (error) {
+      console.error('[CRON] Wait and get utilities error:', error)
+      return { success: false, error: String(error) }
     }
   }
 }
