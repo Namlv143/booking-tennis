@@ -65,6 +65,19 @@ export class TokenService {
   }
 
   /**
+   * Get all usernames with tokens (for debugging)
+   */
+  static getAllUsernames(): string[] {
+    try {
+      const tokens = this.getAllTokens()
+      return Object.keys(tokens)
+    } catch (error) {
+      console.error('[TokenService] Failed to get usernames:', error)
+      return []
+    }
+  }
+
+  /**
    * Clear token for specific user
    */
   static clearToken(username: string): void {

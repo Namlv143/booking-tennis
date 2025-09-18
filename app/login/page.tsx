@@ -8,7 +8,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Loader2, LogIn, ArrowRight } from "lucide-react"
-import { ClientTokenService } from "@/lib/client-token-service"
+import { TokenService } from "@/lib/token-service"
 
 export default function LoginPage() {
   const [isLoggingIn, setIsLoggingIn] = useState(false)
@@ -38,24 +38,16 @@ export default function LoginPage() {
       const result = await response.json()
 
       if (response.ok && result.success && result.data?.data?.accessToken) {
-        // Store token on server
-        const tokenStored = await ClientTokenService.storeToken(username, result.data.data.accessToken)
+        // Store token in localStorage
+        TokenService.storeToken(username, result.data.data.accessToken)
         
-        if (tokenStored) {
-          setLoginResult({
-            success: true,
-            message: "Login successful! Redirecting to utilities...",
-            data: result,
-          })
+        setLoginResult({
+          success: true,
+          message: "Login successful! Redirecting to utilities...",
+          data: result,
+        })
 
-          router.push("/utilities")
-        } else {
-          setLoginResult({
-            success: false,
-            message: "Login successful but failed to store token. Please try again.",
-            data: result,
-          })
-        }
+        router.push("/utilities")
       } else {
         setLoginResult({
           success: false,

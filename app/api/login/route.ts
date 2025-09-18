@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server"
-import { ServerTokenService } from "@/lib/server-token-service"
 
 // Types for better type safety
 interface LoginRequest {
@@ -247,9 +246,6 @@ class VinhomesLoginService {
       loginResult.editorConfig = editorConfig
       loginResult.userMe = userMe
       
-      // Store token on server
-      ServerTokenService.storeToken(loginData.username, token)
-      console.log(`[Login] Token stored on server for user: ${loginData.username}`)
     }
     console.log("Login result:", loginResult)
     return loginResult

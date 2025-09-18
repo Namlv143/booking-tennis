@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Loader2, Calendar, LogOut, LayoutList, ArrowRight } from "lucide-react"
-import { ClientTokenService } from "@/lib/client-token-service"
+import { TokenService } from "@/lib/token-service"
 
 export default function TennisBookingPage() {
   const [isBooking, setIsBooking] = useState(false)
@@ -46,27 +46,18 @@ export default function TennisBookingPage() {
 
   // Check for existing token on component mount
   useEffect(() => {
-    const checkServerToken = async () => {
-      try {
-        const token = await ClientTokenService.getValidToken("0979251496")
-        
-        if (token) {
-          setCurrentToken(token)
-          setIsLoggedIn(true)
-          
-          // Load user data
-          loadUserData(token)
-        } else {
-          // No valid token, redirect to login
-          router.push("/login")
-        }
-      } catch (error) {
-        console.error("Failed to check server token:", error)
-        router.push("/login")
-      }
+    const token = TokenService.getToken("0979251496")
+    
+    if (token) {
+      setCurrentToken(token)
+      setIsLoggedIn(true)
+      
+      // Load user data
+      loadUserData(token)
+    } else {
+      // No token, redirect to login
+      router.push("/login")
     }
-
-    checkServerToken()
   }, [router])
 
   const loadUserData = async (token: string) => {
@@ -334,25 +325,17 @@ export default function TennisBookingPage() {
   }
 
 
-  const handleLogout = async () => {
-    try {
-      // Clear token from server
-      await ClientTokenService.clearToken("0979251496")
-      
-      setCurrentToken(null)
-      setIsLoggedIn(false)
-      setUserData(null)
-      setBookingResult(null)
-      setBookingResult2(null)
-      setBookingResult3(null)
-      setBookingResult4(null)
-      setBookingResult5(null)
-      router.push("/login")
-    } catch (error) {
-      console.error("Failed to logout:", error)
-      // Still redirect to login even if server logout fails
-      router.push("/login")
-    }
+  const handleLogout = () => {
+    TokenService.clearAllTokens()
+    setCurrentToken(null)
+    setIsLoggedIn(false)
+    setUserData(null)
+    setBookingResult(null)
+    setBookingResult2(null)
+    setBookingResult3(null)
+    setBookingResult4(null)
+    setBookingResult5(null)
+    router.push("/login")
   }
 
   if (!isLoggedIn) {
