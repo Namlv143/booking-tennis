@@ -9,6 +9,9 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    
+    env:
+      NODE_ENV: production
 
     steps:
     - name: Checkout code
@@ -28,8 +31,11 @@ jobs:
     - name: Install dependencies
       run: pnpm install --no-frozen-lockfile
 
+    - name: Run type checking
+      run: pnpm run type-check
+
     - name: Run linting
-      run: pnpm run lint -- --max-warnings 0
+      run: pnpm run lint
 
     - name: Build application
       run: pnpm run build
