@@ -225,25 +225,33 @@ export const dynamic = 'force-dynamic'
 
 export async function GET() {
   try {
-    console.log('[CRON] Tennis booking cron job triggered')
+    const vietnamTime = getVietnamTime()
+    console.log(`[GITHUB-ACTIONS-CRON] Tennis booking triggered at ${vietnamTime.toISOString()} (Vietnam time)`)
+    console.log('[GITHUB-ACTIONS-CRON] Source: GitHub Actions workflow')
     
     const automation = new TennisBookingAutomation()
     const result = await automation.runAutomation()
+    
+    console.log(`[GITHUB-ACTIONS-CRON] Result: ${result.success ? 'SUCCESS' : 'FAILED'}`)
+    console.log(`[GITHUB-ACTIONS-CRON] Message: ${result.message}`)
     
     return NextResponse.json({
       success: result.success,
       message: result.message,
       error: result.error,
-      timestamp: new Date().toISOString()
+      timestamp: vietnamTime.toISOString(),
+      source: 'GitHub Actions',
+      timezone: 'Asia/Ho_Chi_Minh'
     })
   } catch (error) {
-    console.error('[CRON] Cron job error:', error)
+    console.error('[GITHUB-ACTIONS-CRON] Cron job error:', error)
     return NextResponse.json(
       {
         success: false,
         message: 'Cron job failed',
         error: String(error),
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        source: 'GitHub Actions'
       },
       { status: 500 }
     )
