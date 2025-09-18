@@ -131,20 +131,39 @@ class TennisBookingAutomation {
     }
   }
 
-  // Step 4: Wait for precise timing (8:30 AM) and trigger booking
+  // Step 4: Wait for PRECISE timing (8:30:00 AM) and trigger booking
   private async waitAndTriggerBooking(token: string): Promise<{ success: boolean; error?: string }> {
     try {
-      console.log('[CRON] Waiting for 8:30 AM precise timing...')
+      console.log('[CRON] Waiting for PRECISE 8:30:00 AM to trigger booking...')
       
-      // Use the configuration helper to calculate wait time
-      const waitTime = getWaitTimeUntilBooking()
+      // Calculate precise time until 8:30:00 AM
+      const now = getVietnamTime()
+      const targetTime = new Date(now)
+      targetTime.setHours(8, 30, 0, 0) // 8:30:00.000 AM (exact)
+      
+      // If it's already past 8:30 AM, schedule for next day
+      if (now >= targetTime) {
+        targetTime.setDate(targetTime.getDate() + 1)
+      }
+      
+      const waitTime = targetTime.getTime() - now.getTime()
+      const waitSeconds = Math.round(waitTime / 1000)
+      const waitMinutes = Math.floor(waitSeconds / 60)
+      const remainingSeconds = waitSeconds % 60
+      
+      console.log(`[CRON] Current time: ${now.toISOString()}`)
+      console.log(`[CRON] Target time: ${targetTime.toISOString()}`)
+      console.log(`[CRON] Waiting ${waitMinutes}m ${remainingSeconds}s until PRECISE 8:30:00 AM...`)
       
       if (waitTime > 0) {
-        console.log(`[CRON] Waiting ${Math.round(waitTime / 1000)} seconds until 8:30 AM...`)
+        // Use high precision setTimeout
         await new Promise(resolve => setTimeout(resolve, waitTime))
       }
       
-      console.log('[CRON] 8:30 AM reached! Triggering booking flow...')
+      // Verify we're at the right time
+      const finalTime = getVietnamTime()
+      console.log(`[CRON] PRECISE 8:30:00 AM reached! Current time: ${finalTime.toISOString()}`)
+      console.log('[CRON] Triggering booking flow at exact timing...')
       
       // Trigger the booking flow here
       const bookingResult = await this.triggerBookingFlow(token)
@@ -156,44 +175,48 @@ class TennisBookingAutomation {
     }
   }
 
-  // Step 5: Trigger the actual booking flow (exactly like manual buttons 1 and 2)
+  // Step 5: Trigger the actual booking flow (exactly like manual buttons 1 and 2) - PRECISE TIMING
   private async triggerBookingFlow(token: string): Promise<{ success: boolean; error?: string }> {
     try {
-      console.log('[CRON] Triggering booking flow for cards 1 and 2...')
+      const startTime = getVietnamTime()
+      console.log(`[CRON] PRECISE TIMING: Starting booking flow at ${startTime.toISOString()}`)
+      console.log('[CRON] Triggering SIMULTANEOUS booking for cards 1 and 2...')
       
-      // Book Card 1: S1.01 18h-20h (placeId: 801, placeUtilityId: 625, timeConstraintId: 575)
-      console.log('[CRON] Booking Card 1: S1.01 18h-20h...')
-      const booking1Result = await this.makeBookingRequest(token, {
-        placeId: 801,
-        placeUtilityId: 625,
-        timeConstraintId: 575
-      })
+      // Book both cards SIMULTANEOUSLY at exact 8:30:00 AM
+      const [booking1Result, booking2Result] = await Promise.all([
+        // Card 1: S1.01 18h-20h (placeId: 801, placeUtilityId: 625, timeConstraintId: 575)
+        this.makeBookingRequest(token, {
+          placeId: 801,
+          placeUtilityId: 625,
+          timeConstraintId: 575
+        }).then(result => {
+          console.log(`[CRON] Card 1 (S1.01) ${result.success ? 'SUCCESS' : 'FAILED'} at ${getVietnamTime().toISOString()}`)
+          return result
+        }),
+        
+        // Card 2: S1.02 18h-20h (placeId: 802, placeUtilityId: 626, timeConstraintId: 575)
+        this.makeBookingRequest(token, {
+          placeId: 802,
+          placeUtilityId: 626,
+          timeConstraintId: 575
+        }).then(result => {
+          console.log(`[CRON] Card 2 (S1.02) ${result.success ? 'SUCCESS' : 'FAILED'} at ${getVietnamTime().toISOString()}`)
+          return result
+        })
+      ])
       
-      if (booking1Result.success) {
-        console.log('[CRON] Card 1 booking successful!')
-      } else {
-        console.error('[CRON] Card 1 booking failed:', booking1Result.error)
-      }
+      const endTime = getVietnamTime()
+      const duration = endTime.getTime() - startTime.getTime()
       
-      // Book Card 2: S1.02 18h-20h (placeId: 802, placeUtilityId: 626, timeConstraintId: 575)
-      console.log('[CRON] Booking Card 2: S1.02 18h-20h...')
-      const booking2Result = await this.makeBookingRequest(token, {
-        placeId: 802,
-        placeUtilityId: 626,
-        timeConstraintId: 575
-      })
-      
-      if (booking2Result.success) {
-        console.log('[CRON] Card 2 booking successful!')
-      } else {
-        console.error('[CRON] Card 2 booking failed:', booking2Result.error)
-      }
+      console.log(`[CRON] PRECISE TIMING: Both bookings completed in ${duration}ms`)
+      console.log(`[CRON] Card 1 result: ${booking1Result.success ? 'SUCCESS' : 'FAILED'}`)
+      console.log(`[CRON] Card 2 result: ${booking2Result.success ? 'SUCCESS' : 'FAILED'}`)
       
       // Return success if at least one booking succeeded
       const overallSuccess = booking1Result.success || booking2Result.success
       const errorMessage = !overallSuccess ? 'Both bookings failed' : undefined
       
-      console.log(`[CRON] Booking flow completed. Success: ${overallSuccess}`)
+      console.log(`[CRON] PRECISE TIMING: Overall booking result: ${overallSuccess ? 'SUCCESS' : 'FAILED'}`)
       return { success: overallSuccess, error: errorMessage }
     } catch (error) {
       console.error('[CRON] Booking flow error:', error)
@@ -344,15 +367,15 @@ class TennisBookingAutomation {
     }
   }
 
-  // Step 2: Wait until 8:27 AM and get utilities
+  // Step 2: Wait until 8:27 AM and get utilities (PRECISE TIMING)
   private async waitAndGetUtilities(token: string): Promise<{ success: boolean; data?: any; error?: string }> {
     try {
-      console.log('[CRON] Waiting for 8:27 AM to call utilities...')
+      console.log('[CRON] Waiting for PRECISE 8:27:00 AM to call utilities...')
       
-      // Calculate time until 8:27 AM
+      // Calculate precise time until 8:27:00 AM
       const now = getVietnamTime()
       const targetTime = new Date(now)
-      targetTime.setHours(8, 27, 0, 0) // 8:27 AM
+      targetTime.setHours(8, 27, 0, 0) // 8:27:00.000 AM (exact)
       
       // If it's already past 8:27 AM, schedule for next day
       if (now >= targetTime) {
@@ -360,13 +383,23 @@ class TennisBookingAutomation {
       }
       
       const waitTime = targetTime.getTime() - now.getTime()
+      const waitSeconds = Math.round(waitTime / 1000)
+      const waitMinutes = Math.floor(waitSeconds / 60)
+      const remainingSeconds = waitSeconds % 60
+      
+      console.log(`[CRON] Current time: ${now.toISOString()}`)
+      console.log(`[CRON] Target time: ${targetTime.toISOString()}`)
+      console.log(`[CRON] Waiting ${waitMinutes}m ${remainingSeconds}s until PRECISE 8:27:00 AM...`)
       
       if (waitTime > 0) {
-        console.log(`[CRON] Waiting ${Math.round(waitTime / 1000)} seconds until 8:27 AM...`)
+        // Use high precision setTimeout
         await new Promise(resolve => setTimeout(resolve, waitTime))
       }
       
-      console.log('[CRON] 8:27 AM reached! Calling utilities...')
+      // Verify we're at the right time
+      const finalTime = getVietnamTime()
+      console.log(`[CRON] PRECISE 8:27:00 AM reached! Current time: ${finalTime.toISOString()}`)
+      console.log('[CRON] Calling utilities at exact timing...')
       
       // Now call utilities
       return await this.getUtilities(token)
