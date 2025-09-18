@@ -1,26 +1,69 @@
 import { NextResponse } from "next/server"
 
-class VinhomesTennisBooking {
-  private baseUrl = "https://vh.vinhomes.vn"
-  private jwtToken =
-    "eyJhbGciOiJIUzUxMiJ9.eyJqdGkiOiIxODI2NSIsInN1YiI6IjA5NzkyNTE0OTYiLCJhdWQiOiJvYXV0aCIsImlhdCI6MTc1ODA5ODg4NiwiZXhwIjoxNzU4MTg1Mjg2fQ.3n0wf4LoM4ZuOCMNaLdOpBCavvcx05XD1u4GhVKzZkd-cXIl_XXnvPa_WB_6kN_9gXLW3X1CZLlqIqg0bnoWEA"
-  private secretKey = "tqVtg9GqwUiKbHqkSG4BpMyXPu3BbpUHmzOqgEQa1KYJZ1Ckv8@@@"
+// Types for better type safety
+interface BookingRequest {
+  bookingDate: number
+  placeId: number
+  timeConstraintId: number
+  utilityId: number
+  residentTicket: number
+  residentChildTicket: null
+  guestTicket: null
+  guestChildTicket: null
+}
 
-  // Pre-configured data
-  private utilityId = 75
-  private placeId: number
-  private placeUtilityId: number
-  private classifyId = 118
-  private timeConstraintId: number
+interface BookingData {
+  bookingRequests: BookingRequest[]
+  paymentMethod: null
+  vinClubPoint: null
+  deviceType: string
+  cs?: string
+}
+
+interface TimeSlot {
+  id: number
+  fromTime: string
+}
+
+interface ApiResponse {
+  data?: any
+  error?: string
+  code?: number
+  message?: string
+}
+
+interface StepResult {
+  success?: boolean
+  error?: string
+}
+
+class VinhomesTennisBooking {
+  // Static constants - configuration that doesn't change
+  private static readonly BASE_URL = "https://vh.vinhomes.vn"
+  private static readonly SECRET_KEY = "tqVtg9GqwUiKbHqkSG4BpMyXPu3BbpUHmzOqgEQa1KYJZ1Ckv8@@@"
+  private static readonly UTILITY_ID = 75
+  private static readonly CLASSIFY_ID = 118
+  private static readonly RESIDENT_TICKET_COUNT = 4
+  private static readonly DEVICE_TYPE = "ANDROID"
+
+  // Instance properties - specific to each booking
+  private readonly placeId: number
+  private readonly placeUtilityId: number
+  private readonly timeConstraintId: number
+  private readonly jwtToken: string
+  
+  // Internal state - managed during booking flow
   private fromTime: string | null = null
   private bookingDate: number | null = null
 
-  constructor(placeId: number, placeUtilityId: number, timeConstraintId: number) {
+  constructor(placeId: number, placeUtilityId: number, timeConstraintId: number, jwtToken: string) {
     this.placeId = placeId
     this.placeUtilityId = placeUtilityId
     this.timeConstraintId = timeConstraintId
+    this.jwtToken = jwtToken
   }
 
+  // Private utility methods - internal helpers
   private getHeaders(method: string): Record<string, string> {
     const headers: Record<string, string> = {
       "user-agent": "Dart/3.7 (dart:io)",
@@ -31,11 +74,18 @@ class VinhomesTennisBooking {
       "device-id": "51a9e0d3fcb8574c",
       host: "vh.vinhomes.vn",
       "content-type": "application/json; charset=UTF-8",
+      // Add more headers to mimic mobile app
+      "accept": "application/json",
+      "cache-control": "no-cache",
+      "pragma": "no-cache",
+      // Add referrer to look more legitimate
+      "referer": "https://vh.vinhomes.vn/",
     }
 
     if (method === "POST") {
       headers["Connection"] = "keep-alive"
       headers["accept-encoding"] = "gzip, deflate, br"
+      headers["content-length"] = "calculated-dynamically"
     } else {
       headers["accept-encoding"] = "gzip"
     }
@@ -50,10 +100,10 @@ class VinhomesTennisBooking {
     return bookingDate.getTime()
   }
 
-  private async generateChecksum(bookingData: any): Promise<string> {
+  private async generateChecksum(bookingData: BookingData): Promise<string> {
     const booking = bookingData.bookingRequests[0]
     const numericSum = booking.utilityId + booking.placeId + booking.bookingDate + booking.timeConstraintId
-    const interpolatedString = `${numericSum}${this.secretKey}`
+    const interpolatedString = `${numericSum}${VinhomesTennisBooking.SECRET_KEY}`
 
     const encoder = new TextEncoder()
     const data = encoder.encode(interpolatedString)
@@ -67,8 +117,8 @@ class VinhomesTennisBooking {
     endpoint: string,
     data?: any,
     params?: Record<string, string>,
-  ): Promise<any> {
-    const url = new URL(endpoint, this.baseUrl)
+  ): Promise<ApiResponse> {
+    const url = new URL(endpoint, VinhomesTennisBooking.BASE_URL)
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
         url.searchParams.append(key, value)
@@ -77,10 +127,15 @@ class VinhomesTennisBooking {
 
     const headers = this.getHeaders(method)
 
+    // Add dynamic content-length for POST requests
+    if (method === "POST" && data) {
+      headers["content-length"] = Buffer.byteLength(JSON.stringify(data), 'utf8').toString()
+    }
+
     console.log("[v0] Making request:", {
       method,
       url: url.toString(),
-      headers,
+      headers: { ...headers, "x-vinhome-token": "***" }, // Hide token in logs
       data: data ? JSON.stringify(data, null, 2) : undefined,
     })
 
@@ -89,13 +144,13 @@ class VinhomesTennisBooking {
         method,
         headers,
         body: data ? JSON.stringify(data) : undefined,
-        // Prevent all automatic headers and behaviors
+        // Mimic mobile app behavior more closely
         cache: "no-store",
-        redirect: "manual",
-        referrerPolicy: "no-referrer",
+        redirect: "follow", // Changed from "manual" to "follow" like mobile apps
+        referrerPolicy: "strict-origin-when-cross-origin",
         mode: "cors",
         credentials: "omit",
-        keepalive: false,
+        keepalive: true, // Changed to true to maintain connection like mobile apps
         // Additional options to match mobile app behavior
         integrity: undefined,
         signal: undefined,
@@ -118,32 +173,37 @@ class VinhomesTennisBooking {
     }
   }
 
-  private async getTimeSlots(): Promise<{ success?: boolean; error?: string }> {
+  // Private booking flow methods - step-by-step process
+  private async getTimeSlots(): Promise<StepResult> {
     this.bookingDate = this.getBookingDate()
 
     const params = { bookingDate: this.bookingDate.toString() }
-    const endpoint = `/api/vhr/utility/v0/utility/${this.utilityId}/booking-time`
+    const endpoint = `/api/vhr/utility/v0/utility/${VinhomesTennisBooking.UTILITY_ID}/booking-time`
 
     const response = await this.makeRequest("GET", endpoint, undefined, params)
     if (response.error) {
       return { error: response.error }
     }
 
-    // Extract fromTime from API response for id=575
-    const timeSlots = response.data || []
-    const targetSlot = timeSlots.find((slot: any) => slot.id === this.timeConstraintId)
+    // Extract fromTime from API response for the specific time constraint
+    const timeSlots: TimeSlot[] = response.data || []
+    const targetSlot = timeSlots.find((slot: TimeSlot) => slot.id === this.timeConstraintId)
+
+    if (!targetSlot) {
+      return { error: `Time slot with id ${this.timeConstraintId} not found` }
+    }
 
     this.fromTime = targetSlot.fromTime
     return { success: true }
   }
 
-  private async getClassifies(): Promise<{ success?: boolean; error?: string }> {
+  private async getClassifies(): Promise<StepResult> {
     const params = {
       timeConstraintId: this.timeConstraintId.toString(),
       monthlyTicket: "false",
       fromTime: this.fromTime!,
     }
-    const endpoint = `/api/vhr/utility/v0/utility/${this.utilityId}/classifies`
+    const endpoint = `/api/vhr/utility/v0/utility/${VinhomesTennisBooking.UTILITY_ID}/classifies`
 
     const response = await this.makeRequest("GET", endpoint, undefined, params)
     if (response.error) {
@@ -153,14 +213,14 @@ class VinhomesTennisBooking {
     return { success: true }
   }
 
-  private async getPlaces(): Promise<{ success?: boolean; error?: string }> {
+  private async getPlaces(): Promise<StepResult> {
     const params = {
-      classifyId: this.classifyId.toString(),
+      classifyId: VinhomesTennisBooking.CLASSIFY_ID.toString(),
       fromTime: this.fromTime!,
       timeConstraintId: this.timeConstraintId.toString(),
       monthlyTicket: "false",
     }
-    const endpoint = `/api/vhr/utility/v0/utility/${this.utilityId}/places`
+    const endpoint = `/api/vhr/utility/v0/utility/${VinhomesTennisBooking.UTILITY_ID}/places`
 
     const response = await this.makeRequest("GET", endpoint, undefined, params)
     if (response.error) {
@@ -170,7 +230,7 @@ class VinhomesTennisBooking {
     return { success: true }
   }
 
-  private async getTicketInfo(): Promise<{ success?: boolean; error?: string }> {
+  private async getTicketInfo(): Promise<StepResult> {
     const params = {
       bookingDate: this.bookingDate!.toString(),
       placeUtilityId: this.placeUtilityId.toString(),
@@ -186,15 +246,15 @@ class VinhomesTennisBooking {
     return { success: true }
   }
 
-  private async makeBooking(): Promise<any> {
-    const bookingData = {
+  private async makeBooking(): Promise<ApiResponse> {
+    const bookingData: BookingData = {
       bookingRequests: [
         {
           bookingDate: this.bookingDate!,
           placeId: this.placeId,
           timeConstraintId: this.timeConstraintId,
-          utilityId: this.utilityId,
-          residentTicket: 4,
+          utilityId: VinhomesTennisBooking.UTILITY_ID,
+          residentTicket: VinhomesTennisBooking.RESIDENT_TICKET_COUNT,
           residentChildTicket: null,
           guestTicket: null,
           guestChildTicket: null,
@@ -202,7 +262,7 @@ class VinhomesTennisBooking {
       ],
       paymentMethod: null,
       vinClubPoint: null,
-      deviceType: "ANDROID",
+      deviceType: VinhomesTennisBooking.DEVICE_TYPE,
     }
 
     // Add checksum
@@ -212,85 +272,80 @@ class VinhomesTennisBooking {
     return await this.makeRequest("POST", endpoint, bookingData)
   }
 
-  async executeBookingFlow(): Promise<any> {
+  // Public method - main booking execution flow
+  async executeBookingFlow(): Promise<ApiResponse> {
     // Step 1: Get time slots
-    console.log("[v0] Step 1: Getting time slots...")
+    console.log("Step 1: Getting time slots...")
     const step1 = await this.getTimeSlots()
     if (step1.error) {
-      console.log("[v0] Step 1 failed:", step1.error)
+      console.log("Step 1 failed:", step1.error)
       return { error: "Step 1 failed: " + step1.error }
     }
-    console.log("[v0] Step 1 completed successfully")
+    console.log("Step 1 completed successfully")
 
     // Step 2: Get classifies
-    console.log("[v0] Step 2: Getting classifies...")
+    console.log("Step 2: Getting classifies...")
     const step2 = await this.getClassifies()
     if (step2.error) {
-      console.log("[v0] Step 2 failed:", step2.error)
+      console.log("Step 2 failed:", step2.error)
       return { error: "Step 2 failed: " + step2.error }
     }
-    console.log("[v0] Step 2 completed successfully")
+    console.log("Step 2 completed successfully")
 
     // Step 3: Get places
-    console.log("[v0] Step 3: Getting places...")
+    console.log("Step 3: Getting places...")
     const step3 = await this.getPlaces()
     if (step3.error) {
-      console.log("[v0] Step 3 failed:", step3.error)
+      console.log("Step 3 failed:", step3.error)
       return { error: "Step 3 failed: " + step3.error }
     }
-    console.log("[v0] Step 3 completed successfully")
+    console.log("Step 3 completed successfully")
 
-    console.log("[v0] Step 4: Triggering ticket info (non-blocking)...")
+    // Step 4: Trigger ticket info (non-blocking for performance)
+    console.log("Step 4: Triggering ticket info (non-blocking)...")
     this.getTicketInfo()
       .then((result) => {
         if (result.error) {
-          console.log("[v0] Step 4 failed (async):", result.error)
+          console.log("Step 4 failed (async):", result.error)
         } else {
-          console.log("[v0] Step 4 completed successfully (async)")
+          console.log("Step 4 completed successfully (async)")
         }
       })
       .catch((error) => {
-        console.log("[v0] Step 4 error (async):", error)
+        console.log("Step 4 error (async):", error)
       })
 
-    console.log("[v0] Step 5: Making booking (parallel with ticket info)...")
+    // Step 5: Make booking (parallel with ticket info for performance)
+    console.log("Step 5: Making booking (parallel with ticket info)...")
     const result = await this.makeBooking()
-    console.log("[v0] Final booking result:", result)
+    console.log("Final booking result:", result)
     return result
   }
 }
 
 export async function POST(request: Request) {
   try {
-    console.log("[v0] Tennis booking API called")
-
-    // Parse request body to get placeId, placeUtilityId, and timeConstraintId
+    // Parse request body to get placeId, placeUtilityId, timeConstraintId, jwtToken, and optional mode
     const body = await request.json()
-    const { placeId, placeUtilityId, timeConstraintId } = body
+    const { placeId, placeUtilityId, timeConstraintId, jwtToken, mode = "stealth" } = body
 
-    if (!placeId || !placeUtilityId || !timeConstraintId) {
+    if (!placeId || !placeUtilityId || !timeConstraintId || !jwtToken) {
       return NextResponse.json(
-        { message: "placeId, placeUtilityId, and timeConstraintId are required" },
+        { message: "placeId, placeUtilityId, timeConstraintId, and jwtToken are required" },
         { status: 400 },
       )
     }
+    const booking = new VinhomesTennisBooking(placeId, placeUtilityId, timeConstraintId, jwtToken)
 
-    console.log(
-      `[v0] Booking for placeId: ${placeId}, placeUtilityId: ${placeUtilityId}, timeConstraintId: ${timeConstraintId}`,
-    )
 
-    const booking = new VinhomesTennisBooking(placeId, placeUtilityId, timeConstraintId)
     const result = await booking.executeBookingFlow()
 
     if (result.error) {
-      console.log("[v0] Booking failed with error:", result.error)
       return NextResponse.json({ message: result.error }, { status: 400 })
     }
 
-    console.log("[v0] Booking completed successfully")
     return NextResponse.json(result)
   } catch (error) {
-    console.log("[v0] Unexpected error:", error)
     return NextResponse.json({ message: "Internal server error: " + String(error) }, { status: 500 })
   }
 }
