@@ -42,25 +42,22 @@ class VinhomesTennisBooking {
   private static readonly BASE_URL = "https://vh.vinhomes.vn"
   private static readonly SECRET_KEY = "tqVtg9GqwUiKbHqkSG4BpMyXPu3BbpUHmzOqgEQa1KYJZ1Ckv8@@@"
   private static readonly UTILITY_ID = 75
-  // private static readonly CLASSIFY_ID = 118
+  // private static readonly CLASSIFY_ID = 117  // Hardcoded
   private static readonly RESIDENT_TICKET_COUNT = 4
   private static readonly DEVICE_TYPE = "ANDROID"
 
-  // Instance properties - specific to each booking (from params)
-  private readonly placeId: number
-  private readonly placeUtilityId: number
-  private readonly timeConstraintId: number
+  // Hardcoded parameters
+  private readonly placeId: number = 796
+  private readonly placeUtilityId: number = 625  // Will be set from API response
+  private readonly timeConstraintId: number = 571
   private readonly jwtToken: string
   
   // Internal state - managed during booking flow
-  private fromTime: string | null = null
+  private fromTime: string | null = null  // Can be timestamp string like "1758337200000"
   private bookingDate: number | null = null
   private cookies: string = ""  // Store cookies from step 4
 
-  constructor(placeId: number, placeUtilityId: number, timeConstraintId: number, jwtToken: string) {
-    this.placeId = placeId
-    this.placeUtilityId = placeUtilityId
-    this.timeConstraintId = timeConstraintId
+  constructor(jwtToken: string) {
     this.jwtToken = jwtToken
   }
 
@@ -77,7 +74,7 @@ class VinhomesTennisBooking {
       "content-type": "application/json; charset=UTF-8",
     }
 
-    // Add cookies if available (from step 4)
+    // Add cookies if available
     if (this.cookies) {
       headers["Cookie"] = this.cookies
     }
@@ -152,7 +149,7 @@ class VinhomesTennisBooking {
         return { error: `HTTP ${response.status}: ${errorText}` }
       }
 
-      // Extract cookies from response headers (for step 4)
+      // Extract cookies from response headers
       const setCookieHeaders = response.headers.getSetCookie?.() || []
       if (setCookieHeaders.length > 0) {
         const cookieStrings = setCookieHeaders.map(cookie => {
@@ -161,6 +158,7 @@ class VinhomesTennisBooking {
           return nameValue
         })
         this.cookies = cookieStrings.join('; ')
+        console.log("🍪 Extracted cookies:", this.cookies)
       }
 
       const responseData = await response.json()
@@ -172,27 +170,23 @@ class VinhomesTennisBooking {
   }
 
   // Private booking flow methods - step-by-step process
+  // STEP 1: Get time slots - COMMENTED OUT
   // private async getTimeSlots(): Promise<StepResult> {
   //   this.bookingDate = this.getBookingDate()
-
   //   const params = { bookingDate: this.bookingDate }
   //   const endpoint = `/api/vhr/utility/v0/utility/${VinhomesTennisBooking.UTILITY_ID}/booking-time`
-
   //   const response = await this.makeRequest("GET", endpoint, undefined, params)
-    
   //   if (response.error) {
   //     console.error("❌ [STEP 1] Error in getTimeSlots:", response.error)
   //     return { error: response.error }
   //   }
-
-  //   // Extract fromTime from API response for the specific time constraint
   //   const timeSlots: TimeSlot[] = response.data || []
-    
   //   const targetSlot = timeSlots.find((slot: TimeSlot) => slot.id === this.timeConstraintId)
   //   this.fromTime = targetSlot?.fromTime || ""
   //   return { success: true }
   // }
 
+  // STEP 2: Get classifies - COMMENTED OUT
   // private async getClassifies(): Promise<StepResult> {
   //   const params = {
   //     timeConstraintId: this.timeConstraintId,
@@ -200,16 +194,15 @@ class VinhomesTennisBooking {
   //     fromTime: this.fromTime!,
   //   }
   //   const endpoint = `/api/vhr/utility/v0/utility/${VinhomesTennisBooking.UTILITY_ID}/classifies`
-
   //   const response = await this.makeRequest("GET", endpoint, undefined, params)
   //   if (response.error) {
   //     console.error("❌ [STEP 2] Error in getClassifies:", response.error)
   //     return { error: response.error }
   //   }
-
   //   return { success: true }
   // }
 
+  // STEP 3: Get places - COMMENTED OUT
   // private async getPlaces(): Promise<StepResult> {
   //   const params = {
   //     classifyId: VinhomesTennisBooking.CLASSIFY_ID,
@@ -218,19 +211,18 @@ class VinhomesTennisBooking {
   //     monthlyTicket: "false",
   //   }
   //   const endpoint = `/api/vhr/utility/v0/utility/${VinhomesTennisBooking.UTILITY_ID}/places`
-
   //   const response = await this.makeRequest("GET", endpoint, undefined, params)
   //   if (response.error) {
   //     console.error("❌ [STEP 3] Error in getPlaces:", response.error)
   //     return { error: response.error }
   //   }
-
   //   return { success: true }
   // }
 
   private async getTicketInfo(): Promise<StepResult> {
-    // Set hardcoded values since we're skipping steps 1-3
+    // Set hardcoded values
     this.bookingDate = this.getBookingDate()
+    // this.fromTime = "1758337200000"  // Hardcoded fromTime timestamp for timeConstraintId 571
     
     const params = {
       bookingDate: this.bookingDate,
@@ -239,11 +231,14 @@ class VinhomesTennisBooking {
     }
     const endpoint = "/api/vhr/utility/v0/utility/ticket-info"
 
+    console.log("🎫 [STEP 4] Getting ticket info with params:", params)
     const response = await this.makeRequest("GET", endpoint, undefined, params)
     if (response.error) {
-      console.error("❌ getTicketInfo:", response.error)
+      console.error("❌ [STEP 4] Error in getTicketInfo:", response.error)
       return { error: response.error }
     }
+
+    console.log("✅ [STEP 4] Ticket info retrieved successfully")
     return { success: true }
   }
 
@@ -274,7 +269,7 @@ class VinhomesTennisBooking {
     const result = await this.makeRequest("POST", endpoint, bookingData)
     
     if (result.error) {
-      console.error("Booking failed:", result.error)
+      console.error("❌ [STEP 5] Booking failed:", result.error)
     }
     
     return result
@@ -282,21 +277,18 @@ class VinhomesTennisBooking {
 
   // Public method - main booking execution flow
   async executeBookingFlow(): Promise<ApiResponse> {
-    // Steps 1-3 are skipped (using parameters from request)
-
-    // Step 4: Get ticket info (synchronous for cookie extraction)
+  
     const step4 = await this.getTicketInfo()
     if (step4.error) {
       console.error("💥 STEP 4 FAILED:", step4.error)
       return { error: "Step 4 failed: " + step4.error }
     }
-
-    // Step 5: Make booking (synchronous, with cookies from step 4)
     const result = await this.makeBooking()
-    
     if (result.error) {
       console.error("💥 FINAL RESULT: BOOKING FAILED")
       console.error("💥 Error:", result.error)
+    } else {
+      console.error("🎉 FINAL RESULT: BOOKING SUCCESS!")
     }
     
     return result
@@ -305,12 +297,20 @@ class VinhomesTennisBooking {
 
 export async function POST(request: Request) {
   try {
-    // Parse request body to get placeId, placeUtilityId, timeConstraintId, jwtToken, and optional mode
+    // Parse request body to get jwtToken only (other parameters are hardcoded)
     const body = await request.json()
     
-    const { placeId, placeUtilityId, timeConstraintId, jwtToken } = body
+    const { jwtToken } = body
     
-    const booking = new VinhomesTennisBooking(placeId, placeUtilityId, timeConstraintId, jwtToken)
+    if (!jwtToken) {
+      console.error("❌ VALIDATION FAILED: Missing jwtToken")
+      return NextResponse.json(
+        { message: "jwtToken is required" },
+        { status: 400 },
+      )
+    }
+    
+    const booking = new VinhomesTennisBooking(jwtToken)
     const result = await booking.executeBookingFlow()
 
     if (result.error) {
@@ -320,7 +320,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json(result)
   } catch (error) {
-    console.error("💥 UNEXPECTED ERROR in tennis booking API:")
+    console.error("💥 UNEXPECTED ERROR in tennis booking reverse API:")
     console.error("💥 Error type:", typeof error)
     console.error("💥 Error message:", error instanceof Error ? error.message : String(error))
     console.error("💥 Error stack:", error instanceof Error ? error.stack : "No stack trace")

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Loader2, Calendar, LogOut, LayoutList } from "lucide-react"
 import { useUser } from "@/contexts/UserContext"
@@ -21,11 +21,11 @@ export default function TennisBookingPage() {
     message: string
   } | null>(null)
 
-  const [isBooking3, setIsBooking3] = useState(false)
-  const [bookingResult3, setBookingResult3] = useState<{
-    success: boolean
-    message: string
-  } | null>(null)
+  // const [isBooking3, setIsBooking3] = useState(false)
+  // const [bookingResult3, setBookingResult3] = useState<{
+  //   success: boolean
+  //   message: string
+  // } | null>(null)
 
   const [isBooking4, setIsBooking4] = useState(false)
   const [bookingResult4, setBookingResult4] = useState<{
@@ -35,6 +35,12 @@ export default function TennisBookingPage() {
 
   const [isBooking5, setIsBooking5] = useState(false)
   const [bookingResult5, setBookingResult5] = useState<{
+    success: boolean
+    message: string
+  } | null>(null)
+
+  const [isBooking6, setIsBooking6] = useState(false)
+  const [bookingResult6, setBookingResult6] = useState<{
     success: boolean
     message: string
   } | null>(null)
@@ -137,58 +143,58 @@ export default function TennisBookingPage() {
     }
   )
 
-  const handleBooking3 = async () => {
-    if (!currentToken) {
-      setBookingResult3({
-        success: false,
-        message: "Please login first to book tennis courts.",
-      })
-      return
-    }
+  // const handleBooking3 = async () => {
+  //   if (!currentToken) {
+  //     setBookingResult3({
+  //       success: false,
+  //       message: "Please login first to book tennis courts.",
+  //     })
+  //     return
+  //   }
 
-    setIsBooking3(true)
-    setBookingResult3(null)
+  //   setIsBooking3(true)
+  //   setBookingResult3(null)
 
-    try {
-      const response = await fetch("/api/tennis-booking-test", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ 
-          jwtToken: currentToken
-        }),
-      })
+  //   try {
+  //     const response = await fetch("/api/tennis-booking-test", {
+  //       method: "POST",
+  //       headers: {
+  //         "Content-Type": "application/json",
+  //       },
+  //       body: JSON.stringify({ 
+  //         jwtToken: currentToken
+  //       }),
+  //     })
 
-      const result = await response.json()
-      console.log("🧪 [CARD 3] Dynamic booking result:", result)
+  //     const result = await response.json()
+  //     console.log("🧪 [CARD 3] Dynamic booking result:", result)
 
-      if (result?.data?.transactionId || result?.data?.userId) {
-        const discoveredParams = result.discoveredParams
-        const message = discoveredParams 
-          ? `Tennis court booking completed successfully! 🎾 (Discovered: Place ${discoveredParams.placeId}, Time ${discoveredParams.timeConstraintId})`
-          : "Tennis court booking completed successfully! 🎾"
+  //     if (result?.data?.transactionId || result?.data?.userId) {
+  //       const discoveredParams = result.discoveredParams
+  //       const message = discoveredParams 
+  //         ? `Tennis court booking completed successfully! 🎾 (Discovered: Place ${discoveredParams.placeId}, Time ${discoveredParams.timeConstraintId})`
+  //         : "Tennis court booking completed successfully! 🎾"
         
-        setBookingResult3({
-          success: true,
-          message: message,
-        })
-      } else {
-        setBookingResult3({
-          success: false,
-          message: result.message || "Booking failed. Please try again.",
-        })
-      }
-    } catch (error) {
-      console.log("🧪 [CARD 3] Booking error:", error)
-      setBookingResult3({
-        success: false,
-        message: "Network error. Please check your connection and try again.",
-      })
-    } finally {
-      setIsBooking3(false)
-    }
-  }
+  //       setBookingResult3({
+  //         success: true,
+  //         message: message,
+  //       })
+  //     } else {
+  //       setBookingResult3({
+  //         success: false,
+  //         message: result.message || "Booking failed. Please try again.",
+  //       })
+  //     }
+  //   } catch (error) {
+  //     console.log("🧪 [CARD 3] Booking error:", error)
+  //     setBookingResult3({
+  //       success: false,
+  //       message: "Network error. Please check your connection and try again.",
+  //     })
+  //   } finally {
+  //     setIsBooking3(false)
+  //   }
+  // }
 
   const handleBooking4 = () => handleBookingRequest(
     { placeId: 801, placeUtilityId: 625, timeConstraintId: 576 },
@@ -206,13 +212,63 @@ export default function TennisBookingPage() {
     }
   )
 
+  const handleBooking6 = async () => {
+    if (!currentToken) {
+      setBookingResult6({
+        success: false,
+        message: "Please login first to book tennis courts.",
+      })
+      return
+    }
+
+    setIsBooking6(true)
+    setBookingResult6(null)
+
+    try {
+      console.log("🧪 [CARD 6] Testing tennis-booking-reverse...")
+      const response = await fetch("/api/tennis-booking-reverse", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ 
+          jwtToken: currentToken
+        }),
+      })
+
+      const result = await response.json()
+      console.log("🧪 [CARD 6] Reverse booking result:", result)
+
+      if (result?.data?.transactionId || result?.data?.userId) {
+        setBookingResult6({
+          success: true,
+          message: "Tennis court reverse booking completed successfully! 🎾 (Hardcoded params + cookies)",
+        })
+      } else {
+        setBookingResult6({
+          success: false,
+          message: result.message || "Reverse booking failed. Please try again.",
+        })
+      }
+    } catch (error) {
+      console.log("🧪 [CARD 6] Reverse booking error:", error)
+      setBookingResult6({
+        success: false,
+        message: "Network error. Please check your connection and try again.",
+      })
+    } finally {
+      setIsBooking6(false)
+    }
+  }
+
   const handleLogout = () => {
     logout()
     setBookingResult(null)
     setBookingResult2(null)
-    setBookingResult3(null)
+    // setBookingResult3(null)
     setBookingResult4(null)
     setBookingResult5(null)
+    setBookingResult6(null)
     // logout() already handles redirect with page refresh
   }
 
@@ -266,7 +322,7 @@ export default function TennisBookingPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
           {/* First booking card (original) */}
           <Card className="shadow-lg">
             <CardHeader className="text-center p-2">
@@ -335,7 +391,7 @@ export default function TennisBookingPage() {
           </Card>
 
           {/* Third booking card */}
-          <Card className="shadow-lg">
+          {/* <Card className="shadow-lg">
             <CardHeader className="text-center p-2">
               <div className="mx-auto w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mb-1">
                 <Calendar className="w-6 h-6 text-orange-600" />
@@ -366,7 +422,7 @@ export default function TennisBookingPage() {
                 ) : 'Random'}
               </Button>
             </CardContent>
-          </Card>
+          </Card> */}
 
           {/* Fourth booking card */}
           <Card className="shadow-lg">
@@ -435,12 +491,40 @@ export default function TennisBookingPage() {
               </Button>
             </CardContent>
           </Card>
-        </div>
 
-        <div className="mt-6 text-center">
-          <p className="text-xs text-gray-500">
-            Sequential flow: time slots → classifies → places → ticket info → booking
-          </p>
+          {/* Sixth booking card - Testing tennis-booking-reverse */}
+          <Card className="shadow-lg">
+            <CardHeader className="text-center p-2">
+              <div className="mx-auto w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mb-1">
+                <Calendar className="w-6 h-6 text-orange-600" />
+              </div>
+              <CardTitle className="text-lg font-bold text-gray-800">Test</CardTitle>
+            </CardHeader>
+
+            <CardContent className="space-y-1 px-4 py-2">
+              {bookingResult6 && (
+                <Alert className={bookingResult6.success ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50"}>
+                  <AlertDescription className={bookingResult6.success ? "text-green-800" : "text-red-800"}>
+                    <div className="text-xs">{bookingResult6.message}</div>
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              <Button
+                onClick={handleBooking6}
+                disabled={isBooking6 || !isLoggedIn}
+                className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold py-4 text-sm"
+                size="default"
+              >
+                {isBooking6 ? (
+                  <>
+                    <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                    Testing...
+                  </>
+                ) : 'Random'}
+              </Button>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>
