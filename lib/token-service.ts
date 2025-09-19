@@ -24,7 +24,6 @@ export class TokenService {
       // Store back to localStorage
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(existingTokens))
       
-      console.log(`[TokenService] Token stored for user: ${username} (no expiration)`)
     } catch (error) {
       console.error('[TokenService] Failed to store token:', error)
     }
@@ -39,7 +38,6 @@ export class TokenService {
       const tokenData = tokens[username]
 
       if (!tokenData) {
-        console.log(`[TokenService] No token found for user: ${username}`)
         return null
       }
 
@@ -72,7 +70,6 @@ export class TokenService {
       const tokens = this.getAllTokens()
       delete tokens[username]
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(tokens))
-      console.log(`[TokenService] Token cleared for user: ${username}`)
     } catch (error) {
       console.error('[TokenService] Failed to clear token:', error)
     }
@@ -84,7 +81,6 @@ export class TokenService {
   static clearAllTokens(): void {
     try {
       localStorage.removeItem(this.STORAGE_KEY)
-      console.log('[TokenService] All tokens cleared')
     } catch (error) {
       console.error('[TokenService] Failed to clear all tokens:', error)
     }
@@ -122,7 +118,6 @@ export class TokenService {
    */
   static cleanupExpiredTokens(): void {
     // No-op since tokens don't expire
-    console.log('[TokenService] Token cleanup skipped (tokens don\'t expire)')
   }
 }
 

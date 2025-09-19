@@ -6,70 +6,228 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Loader2, Calendar, LogOut, LayoutList } from "lucide-react"
-import { useApp } from "@/lib/context/app-context"
+import { useUser } from "@/contexts/UserContext"
 
 export default function TennisBookingPage() {
+  const [isBooking, setIsBooking] = useState(false)
+  const [bookingResult, setBookingResult] = useState<{
+    success: boolean
+    message: string
+  } | null>(null)
+
+  const [isBooking2, setIsBooking2] = useState(false)
+  const [bookingResult2, setBookingResult2] = useState<{
+    success: boolean
+    message: string
+  } | null>(null)
+
+  const [isBooking3, setIsBooking3] = useState(false)
+  const [bookingResult3, setBookingResult3] = useState<{
+    success: boolean
+    message: string
+  } | null>(null)
+
+  const [isBooking4, setIsBooking4] = useState(false)
+  const [bookingResult4, setBookingResult4] = useState<{
+    success: boolean
+    message: string
+  } | null>(null)
+
+  const [isBooking5, setIsBooking5] = useState(false)
+  const [bookingResult5, setBookingResult5] = useState<{
+    success: boolean
+    message: string
+  } | null>(null)
+
   const router = useRouter()
-  const { state, logout, bookTennisCourt } = useApp()
+
+  // Use context for user state
+  const { 
+    isLoggedIn, 
+    currentToken, 
+    userData, 
+    isLoading, 
+    logout 
+  } = useUser()
 
   // Redirect if not logged in
   useEffect(() => {
-    if (!state.isLoggedIn) {
+    if (!isLoading && !isLoggedIn) {
       router.push("/login")
     }
-  }, [state.isLoggedIn, router])
+  }, [isLoading, isLoggedIn, router])
 
-  const handleBooking = async () => {
-    await bookTennisCourt({
-      placeId: 801,
-      placeUtilityId: 625,
-      timeConstraintId: 575,
-      bookingKey: "booking1"
-    })
+  // Reusable booking function that maintains the same logic
+  const handleBookingRequest = async (
+    bookingParams: {
+      placeId: number
+      placeUtilityId: number
+      timeConstraintId: number
+    },
+    setBookingState: (state: { isBooking: boolean; result: any }) => void
+  ) => {
+    if (!currentToken) {
+      setBookingState({
+        isBooking: false,
+        result: {
+          success: false,
+          message: "Please login first to book tennis courts.",
+        }
+      })
+      return
+    }
+
+    setBookingState({ isBooking: true, result: null })
+
+    try {
+      const response = await fetch("/api/tennis-booking", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ 
+          ...bookingParams,
+          jwtToken: currentToken
+        }),
+      })
+
+      const result = await response.json()
+
+      if (result?.data?.transactionId || result?.data?.userId) {
+        setBookingState({
+          isBooking: false,
+          result: {
+            success: true,
+            message: "Tennis court booking completed successfully! 🎾",
+          }
+        })
+      } else {
+        setBookingState({
+          isBooking: false,
+          result: {
+            success: false,
+            message: result.message || "Booking failed. Please try again.",
+          }
+        })
+      }
+    } catch (error) {
+      setBookingState({
+        isBooking: false,
+        result: {
+          success: false,
+          message: "Network error. Please check your connection and try again.",
+        }
+      })
+    }
   }
 
-  const handleBooking2 = async () => {
-    await bookTennisCourt({
-      placeId: 802,
-      placeUtilityId: 626,
-      timeConstraintId: 575,
-      bookingKey: "booking2"
-    })
-  }
+  const handleBooking = () => handleBookingRequest(
+    { placeId: 801, placeUtilityId: 625, timeConstraintId: 575 },
+    ({ isBooking, result }) => {
+      setIsBooking(isBooking)
+      setBookingResult(result)
+    }
+  )
+
+  const handleBooking2 = () => handleBookingRequest(
+    { placeId: 802, placeUtilityId: 626, timeConstraintId: 575 },
+    ({ isBooking, result }) => {
+      setIsBooking2(isBooking)
+      setBookingResult2(result)
+    }
+  )
 
   const handleBooking3 = async () => {
-    await bookTennisCourt({
-      placeId: 802,
-      placeUtilityId: 626,
-      timeConstraintId: 571,
-      bookingKey: "booking3"
-    })
+    if (!currentToken) {
+      setBookingResult3({
+        success: false,
+        message: "Please login first to book tennis courts.",
+      })
+      return
+    }
+
+    setIsBooking3(true)
+    setBookingResult3(null)
+
+    try {
+      const response = await fetch("/api/tennis-booking-test", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ 
+          jwtToken: currentToken
+        }),
+      })
+
+      const result = await response.json()
+      console.log("🧪 [CARD 3] Dynamic booking result:", result)
+
+      if (result?.data?.transactionId || result?.data?.userId) {
+        const discoveredParams = result.discoveredParams
+        const message = discoveredParams 
+          ? `Tennis court booking completed successfully! 🎾 (Discovered: Place ${discoveredParams.placeId}, Time ${discoveredParams.timeConstraintId})`
+          : "Tennis court booking completed successfully! 🎾"
+        
+        setBookingResult3({
+          success: true,
+          message: message,
+        })
+      } else {
+        setBookingResult3({
+          success: false,
+          message: result.message || "Booking failed. Please try again.",
+        })
+      }
+    } catch (error) {
+      console.log("🧪 [CARD 3] Booking error:", error)
+      setBookingResult3({
+        success: false,
+        message: "Network error. Please check your connection and try again.",
+      })
+    } finally {
+      setIsBooking3(false)
+    }
   }
 
-  const handleBooking4 = async () => {
-    await bookTennisCourt({
-      placeId: 801,
-      placeUtilityId: 625,
-      timeConstraintId: 576,
-      bookingKey: "booking4"
-    })
-  }
+  const handleBooking4 = () => handleBookingRequest(
+    { placeId: 801, placeUtilityId: 625, timeConstraintId: 576 },
+    ({ isBooking, result }) => {
+      setIsBooking4(isBooking)
+      setBookingResult4(result)
+    }
+  )
 
-  const handleBooking5 = async () => {
-    await bookTennisCourt({
-      placeId: 802,
-      placeUtilityId: 625,
-      timeConstraintId: 576,
-      bookingKey: "booking5"
-    })
-  }
+  const handleBooking5 = () => handleBookingRequest(
+    { placeId: 802, placeUtilityId: 625, timeConstraintId: 576 },
+    ({ isBooking, result }) => {
+      setIsBooking5(isBooking)
+      setBookingResult5(result)
+    }
+  )
 
   const handleLogout = () => {
     logout()
-    router.push("/login")
+    setBookingResult(null)
+    setBookingResult2(null)
+    setBookingResult3(null)
+    setBookingResult4(null)
+    setBookingResult5(null)
+    // logout() already handles redirect with page refresh
   }
 
-  if (!state.isLoggedIn) {
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-orange-100 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
+          <p>Loading...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!isLoggedIn) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-orange-50 to-orange-100 flex items-center justify-center">
         <div className="text-center">
@@ -84,10 +242,9 @@ export default function TennisBookingPage() {
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-orange-100 p-4">
       <div className="max-w-4xl mx-auto pt-8">
         {/* Header */}
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex justify-between items-center mb-8 flex-col lg:flex-row gap-4 lg:gap-0">
           <div>
-            <h1 className="text-3xl font-bold text-gray-800 mb-2">Tennis Court Booking</h1>
-            <p className="text-gray-600">Welcome back, {state.userData?.data?.fullName || "User"}!</p>
+            <p className="text-2xl font-bold text-orange-600">Welcome, {userData?.data?.fullName || "User"}!</p>
           </div>
           
           <div className="flex space-x-2">
@@ -120,21 +277,21 @@ export default function TennisBookingPage() {
             </CardHeader>
 
             <CardContent className="space-y-1 px-4 py-2">
-              {state.bookingResults.booking1 && (
-                <Alert className={state.bookingResults.booking1.success ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50"}>
-                  <AlertDescription className={state.bookingResults.booking1.success ? "text-green-800" : "text-red-800"}>
-                    <div className="text-xs">{state.bookingResults.booking1.message}</div>
+              {bookingResult && (
+                <Alert className={bookingResult.success ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50"}>
+                  <AlertDescription className={bookingResult.success ? "text-green-800" : "text-red-800"}>
+                    <div className="text-xs">{bookingResult.message}</div>
                   </AlertDescription>
                 </Alert>
               )}
 
               <Button
                 onClick={handleBooking}
-                disabled={state.isBooking}
+                disabled={isBooking || !isLoggedIn}
                 className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold py-4 text-sm"
                 size="default"
               >
-                {state.isBooking ? (
+                {isBooking ? (
                   <>
                     <Loader2 className="w-3 h-3 mr-1 animate-spin" />
                     Booking...
@@ -153,21 +310,21 @@ export default function TennisBookingPage() {
             </CardHeader>
 
             <CardContent className="space-y-1 px-4 py-2">
-              {state.bookingResults.booking2 && (
-                <Alert className={state.bookingResults.booking2.success ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50"}>
-                  <AlertDescription className={state.bookingResults.booking2.success ? "text-green-800" : "text-red-800"}>
-                    <div className="text-xs">{state.bookingResults.booking2.message}</div>
+              {bookingResult2 && (
+                <Alert className={bookingResult2.success ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50"}>
+                  <AlertDescription className={bookingResult2.success ? "text-green-800" : "text-red-800"}>
+                    <div className="text-xs">{bookingResult2.message}</div>
                   </AlertDescription>
                 </Alert>
               )}
 
               <Button
                 onClick={handleBooking2}
-                disabled={state.isBooking}
+                disabled={isBooking2 || !isLoggedIn}
                 className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold py-4 text-sm"
                 size="default"
               >
-                {state.isBooking ? (
+                {isBooking2 ? (
                   <>
                     <Loader2 className="w-3 h-3 mr-1 animate-spin" />
                     Booking...
@@ -183,30 +340,30 @@ export default function TennisBookingPage() {
               <div className="mx-auto w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mb-1">
                 <Calendar className="w-6 h-6 text-orange-600" />
               </div>
-              <CardTitle className="text-lg font-bold text-gray-800">S1.02</CardTitle>
+              <CardTitle className="text-lg font-bold text-gray-800">Random</CardTitle>
             </CardHeader>
 
             <CardContent className="space-y-1 px-4 py-2">
-              {state.bookingResults.booking3 && (
-                <Alert className={state.bookingResults.booking3.success ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50"}>
-                  <AlertDescription className={state.bookingResults.booking3.success ? "text-green-800" : "text-red-800"}>
-                    <div className="text-xs">{state.bookingResults.booking3.message}</div>
+              {bookingResult3 && (
+                <Alert className={bookingResult3.success ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50"}>
+                  <AlertDescription className={bookingResult3.success ? "text-green-800" : "text-red-800"}>
+                    <div className="text-xs">{bookingResult3.message}</div>
                   </AlertDescription>
                 </Alert>
               )}
 
               <Button
                 onClick={handleBooking3}
-                disabled={state.isBooking}
+                disabled={isBooking3 || !isLoggedIn}
                 className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold py-4 text-sm"
                 size="default"
               >
-                {state.isBooking ? (
+                {isBooking3 ? (
                   <>
                     <Loader2 className="w-3 h-3 mr-1 animate-spin" />
                     Booking...
                   </>
-                ) : '10h-12h'}
+                ) : 'Random'}
               </Button>
             </CardContent>
           </Card>
@@ -221,21 +378,21 @@ export default function TennisBookingPage() {
             </CardHeader>
 
             <CardContent className="space-y-1 px-4 py-2">
-              {state.bookingResults.booking4 && (
-                <Alert className={state.bookingResults.booking4.success ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50"}>
-                  <AlertDescription className={state.bookingResults.booking4.success ? "text-green-800" : "text-red-800"}>
-                    <div className="text-xs">{state.bookingResults.booking4.message}</div>
+              {bookingResult4 && (
+                <Alert className={bookingResult4.success ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50"}>
+                  <AlertDescription className={bookingResult4.success ? "text-green-800" : "text-red-800"}>
+                    <div className="text-xs">{bookingResult4.message}</div>
                   </AlertDescription>
                 </Alert>
               )}
 
               <Button
                 onClick={handleBooking4}
-                disabled={state.isBooking}
+                disabled={isBooking4 || !isLoggedIn}
                 className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold py-4 text-sm"
                 size="default"
               >
-                {state.isBooking ? (
+                {isBooking4 ? (
                   <>
                     <Loader2 className="w-3 h-3 mr-1 animate-spin" />
                     Booking...
@@ -255,21 +412,21 @@ export default function TennisBookingPage() {
             </CardHeader>
 
             <CardContent className="space-y-1 px-4 py-2">
-              {state.bookingResults.booking5 && (
-                <Alert className={state.bookingResults.booking5.success ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50"}>
-                  <AlertDescription className={state.bookingResults.booking5.success ? "text-green-800" : "text-red-800"}>
-                    <div className="text-xs">{state.bookingResults.booking5.message}</div>
+              {bookingResult5 && (
+                <Alert className={bookingResult5.success ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50"}>
+                  <AlertDescription className={bookingResult5.success ? "text-green-800" : "text-red-800"}>
+                    <div className="text-xs">{bookingResult5.message}</div>
                   </AlertDescription>
                 </Alert>
               )}
 
               <Button
                 onClick={handleBooking5}
-                disabled={state.isBooking}
+                disabled={isBooking5 || !isLoggedIn}
                 className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold py-4 text-sm"
                 size="default"
               >
-                {state.isBooking ? (
+                {isBooking5 ? (
                   <>
                     <Loader2 className="w-3 h-3 mr-1 animate-spin" />
                     Booking...
@@ -289,3 +446,4 @@ export default function TennisBookingPage() {
     </div>
   )
 }
+

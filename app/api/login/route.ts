@@ -280,3 +280,5 @@ export async function POST(request: Request) {
   }
 }
 
+// Export login service
+export { VinhomesLoginService }
