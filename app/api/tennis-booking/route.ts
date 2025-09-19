@@ -153,9 +153,9 @@ class VinhomesTennisBooking {
       }
 
       // Extract cookies from response headers (for step 4)
-      const setCookieHeaders = response.headers.getSetCookie?.() || []
+      const setCookieHeaders = (response.headers as any).getSetCookie?.() || []
       if (setCookieHeaders.length > 0) {
-        const cookieStrings = setCookieHeaders.map(cookie => {
+        const cookieStrings = setCookieHeaders.map((cookie: string) => {
           // Extract only the name=value part before the first semicolon
           const nameValue = cookie.split(';')[0].trim()
           return nameValue
