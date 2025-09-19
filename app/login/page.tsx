@@ -51,7 +51,7 @@ export default function LoginPage() {
                   message: "Login successful! Redirecting to utilities...",
                   data: result,
                 })
-                window.location.href = "/utilities/tennis"
+                window.open("/utilities/tennis", "_blank")
       } else {
         setLoginResult({
           success: false,
