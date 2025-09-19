@@ -107,7 +107,7 @@ export default function UtilitiesPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-orange-100 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
           <p>Loading...</p>
@@ -118,7 +118,7 @@ export default function UtilitiesPage() {
 
   if (!isLoggedIn) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-orange-100 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
           <p>Redirecting to login...</p>
@@ -128,11 +128,11 @@ export default function UtilitiesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-orange-100 p-4">
+    <div className="min-h-screen p-4" style={{ background: 'linear-gradient(135deg, #F6E2BC 0%, #A9D09E 100%)' }}>
       <div className="max-w-4xl mx-auto pt-8">
         {/* Header */}
         <div className="text-center mb-8">
-          {userData?.data?.fullName && <h1 className="text-2xl font-semibold text-orange-500">Welcome {userData?.data?.fullName}!</h1>}
+          {userData?.data?.fullName && <h1 className="text-2xl font-semibold" style={{ color: '#3B7097' }}>Welcome {userData?.data?.fullName}!</h1>}
           <p className=" text-gray-800 mb-2">Tennis Booking Dashboard</p>
 
         </div>
@@ -143,7 +143,7 @@ export default function UtilitiesPage() {
             {/* <Button
               onClick={handleGetUtility}
               disabled={isLoadingUtility}
-              className="bg-orange-500 hover:bg-orange-600 text-white"
+              className="bg-gray-800 hover:bg-black text-white"
             >
               {isLoadingUtility ? (
                 <>
@@ -160,7 +160,20 @@ export default function UtilitiesPage() {
             <Button
               onClick={handleGoToBooking}
               variant="outline"
-              className="text-orange-600 border-orange-200 hover:bg-orange-50"
+              className="text-white border-2"
+              style={{ 
+                backgroundColor: '#75BDE0', 
+                borderColor: '#75BDE0',
+                color: 'white'
+              }}
+              onMouseEnter={(e) => {
+                (e.target as HTMLButtonElement).style.backgroundColor = '#3B7097';
+                (e.target as HTMLButtonElement).style.borderColor = '#3B7097';
+              }}
+              onMouseLeave={(e) => {
+                (e.target as HTMLButtonElement).style.backgroundColor = '#75BDE0';
+                (e.target as HTMLButtonElement).style.borderColor = '#75BDE0';
+              }}
             >
               <Calendar className="w-4 h-4 mr-2" />
               Go to Booking
@@ -168,7 +181,20 @@ export default function UtilitiesPage() {
             <Button
               onClick={handleLogout}
               variant="outline"
-              className="text-red-600 border-red-200 hover:bg-red-50"
+              className="text-white border-2"
+              style={{ 
+                backgroundColor: '#3B7097', 
+                borderColor: '#3B7097',
+                color: 'white'
+              }}
+              onMouseEnter={(e) => {
+                (e.target as HTMLButtonElement).style.backgroundColor = '#75BDE0';
+                (e.target as HTMLButtonElement).style.borderColor = '#75BDE0';
+              }}
+              onMouseLeave={(e) => {
+                (e.target as HTMLButtonElement).style.backgroundColor = '#3B7097';
+                (e.target as HTMLButtonElement).style.borderColor = '#3B7097';
+              }}
             >
               <LogOut className="w-4 h-4 mr-2" />
               Logout
@@ -178,11 +204,10 @@ export default function UtilitiesPage() {
         {/* Token Management Section */}
         <Card className="shadow-lg mb-6">
           <CardHeader className="text-center">
-            <div className="mx-auto w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mb-2">
-              <Copy className="w-6 h-6 text-orange-600" />
+            <div className="mx-auto w-12 h-12 rounded-full flex items-center justify-center mb-2" style={{ backgroundColor: '#75BDE0' }}>
+              <Copy className="w-6 h-6 text-white" />
             </div>
             <CardTitle className="text-lg font-bold text-gray-800">Token Management</CardTitle>
-            <CardDescription>Copy token for Vercel environment variable</CardDescription>
           </CardHeader>
 
           <CardContent className="space-y-4">
@@ -198,7 +223,10 @@ export default function UtilitiesPage() {
                   onClick={handleCopyToken}
                   disabled={!currentToken}
                   size="sm"
-                  className="ml-4 bg-orange-500 hover:bg-orange-600 text-white"
+                  className="ml-4 text-white"
+                  style={{ backgroundColor: '#3B7097' }}
+                  onMouseEnter={(e) => (e.target as HTMLButtonElement).style.backgroundColor = '#75BDE0'}
+                  onMouseLeave={(e) => (e.target as HTMLButtonElement).style.backgroundColor = '#3B7097'}
                 >
                   {tokenCopied ? (
                     <>
@@ -249,13 +277,6 @@ export default function UtilitiesPage() {
             </CardContent>
           </Card>
         )}
-
-        {/* Footer */}
-        <div className="mt-8 text-center">
-          <p className="text-sm text-gray-500">
-            Welcome to your tennis booking dashboard. Use the buttons above to manage utilities and book courts.
-          </p>
-        </div>
       </div>
     </div>
   )

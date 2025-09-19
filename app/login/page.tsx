@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Loader2, LogIn, ArrowRight } from "lucide-react"
+import { Loader2, LogIn, ArrowRight, Volleyball } from "lucide-react"
 import { useUser } from "@/contexts/UserContext"
 import { TokenService } from "@/lib/token-service"
 
@@ -70,19 +70,14 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-orange-100 flex items-center justify-center p-4">
+    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'linear-gradient(135deg, #F6E2BC 0%, #A9D09E 100%)' }}>
       <div className="w-full max-w-md">
         <Card className="shadow-lg">
           <CardHeader className="text-center">
-            <div className="mx-auto w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mb-4">
-              <LogIn className="w-8 h-8 text-orange-600" />
+            <div className="mx-auto w-16 h-16 rounded-full flex items-center justify-center mb-4" style={{ backgroundColor: '#3B7097' }}>
+              <LogIn className="w-8 h-8 text-white" />
             </div>
-            <CardTitle className="text-2xl font-bold text-gray-800">
-              Tennis Booking Login
-            </CardTitle>
-            <CardDescription>
-              Enter your credentials to access the tennis booking system
-            </CardDescription>
+            
           </CardHeader>
 
           <CardContent className="space-y-4">
@@ -96,7 +91,7 @@ export default function LoginPage() {
 
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="username">Username</Label>
+                <Label htmlFor="username">Phone number</Label>
                 <Input
                   id="username"
                   type="text"
@@ -120,12 +115,15 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <Button
-              onClick={handleLogin}
-              disabled={isLoggingIn || !username || !password}
-              className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold py-3"
-              size="lg"
-            >
+                    <Button
+                      onClick={handleLogin}
+                      disabled={isLoggingIn || !username || !password}
+                      className="w-full text-white font-semibold py-3"
+                      style={{ backgroundColor: '#3B7097' }}
+                      onMouseEnter={(e) => (e.target as HTMLButtonElement).style.backgroundColor = '#75BDE0'}
+                      onMouseLeave={(e) => (e.target as HTMLButtonElement).style.backgroundColor = '#3B7097'}
+                      size="lg"
+                    >
               {isLoggingIn ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />

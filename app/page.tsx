@@ -24,7 +24,7 @@ export default function TennisBookingPage() {
 
   // Show loading or redirecting message
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-orange-100 flex items-center justify-center">
+    <div className="min-h-screen flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #F6E2BC 0%, #A9D09E 100%)' }}>
       <div className="text-center">
         <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
         <p>{isLoading ? "Loading..." : "Redirecting..."}</p>
