@@ -99,7 +99,7 @@ class VinhomesTennisBooking {
 
   async executeBookingFlow(): Promise<any> {
     const bookingDate = this.getBookingDate();
-    const fromTime = this.generateFromTime(10, 1);
+    const fromTime = this.generateFromTime(18, 1);
     const { timeConstraintId, classifyId, placeUtilityId, placeId } = this.details;
     
     await this.makeStateUpdateCall(`/api/vhr/utility/v0/utility/${VinhomesTennisBooking.UTILITY_ID}/booking-time`, { bookingDate });
