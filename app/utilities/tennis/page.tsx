@@ -33,11 +33,11 @@ export default function TennisBookingPage() {
   message: string;
  } | null>(null);
 
- // const [isBooking3, setIsBooking3] = useState(false)
- // const [bookingResult3, setBookingResult3] = useState<{
- //   success: boolean
- //   message: string
- // } | null>(null)
+ const [isBooking3, setIsBooking3] = useState(false)
+ const [bookingResult3, setBookingResult3] = useState<{
+   success: boolean
+   message: string
+ } | null>(null)
 
  const [isBooking4, setIsBooking4] = useState(false);
  const [bookingResult4, setBookingResult4] = useState<{
@@ -151,58 +151,58 @@ export default function TennisBookingPage() {
    }
   );
 
- // const handleBooking3 = async () => {
- //   if (!currentToken) {
- //     setBookingResult3({
- //       success: false,
- //       message: "Please login first to book tennis courts.",
- //     })
- //     return
- //   }
+ const handleBooking3 = async () => {
+   if (!currentToken) {
+     setBookingResult3({
+       success: false,
+       message: "Please login first to book tennis courts.",
+     })
+     return
+   }
 
- //   setIsBooking3(true)
- //   setBookingResult3(null)
+   setIsBooking3(true)
+   setBookingResult3(null)
 
- //   try {
- //     const response = await fetch("/api/tennis-booking-test", {
- //       method: "POST",
- //       headers: {
- //         "Content-Type": "application/json",
- //       },
- //       body: JSON.stringify({
- //         jwtToken: currentToken
- //       }),
- //     })
+   try {
+     const response = await fetch("/api/tennis-booking-test", {
+       method: "POST",
+       headers: {
+         "Content-Type": "application/json",
+       },
+       body: JSON.stringify({
+         jwtToken: currentToken
+       }),
+     })
 
- //     const result = await response.json()
- //     console.log("🧪 [CARD 3] Dynamic booking result:", result)
+     const result = await response.json()
+     console.log("🧪 [CARD 3] Dynamic booking result:", result)
 
- //     if (result?.data?.transactionId || result?.data?.userId) {
- //       const discoveredParams = result.discoveredParams
- //       const message = discoveredParams
- //         ? `Tennis court booking completed successfully! 🎾 (Discovered: Place ${discoveredParams.placeId}, Time ${discoveredParams.timeConstraintId})`
- //         : "Tennis court booking completed successfully! 🎾"
+     if (result?.data?.transactionId || result?.data?.userId) {
+       const discoveredParams = result.discoveredParams
+       const message = discoveredParams
+         ? `Tennis court booking completed successfully! 🎾 (Discovered: Place ${discoveredParams.placeId}, Time ${discoveredParams.timeConstraintId})`
+         : "Tennis court booking completed successfully! 🎾"
 
- //       setBookingResult3({
- //         success: true,
- //         message: message,
- //       })
- //     } else {
- //       setBookingResult3({
- //         success: false,
- //         message: result.message || "Booking failed. Please try again.",
- //       })
- //     }
- //   } catch (error) {
- //     console.log("🧪 [CARD 3] Booking error:", error)
- //     setBookingResult3({
- //       success: false,
- //       message: "Network error. Please check your connection and try again.",
- //     })
- //   } finally {
- //     setIsBooking3(false)
- //   }
- // }
+       setBookingResult3({
+         success: true,
+         message: message,
+       })
+     } else {
+       setBookingResult3({
+         success: false,
+         message: result.message || "Booking failed. Please try again.",
+       })
+     }
+   } catch (error) {
+     console.log("🧪 [CARD 3] Booking error:", error)
+     setBookingResult3({
+       success: false,
+       message: "Network error. Please check your connection and try again.",
+     })
+   } finally {
+     setIsBooking3(false)
+   }
+ }
 
  const handleBooking4 = () =>
   handleBookingRequest(
@@ -445,7 +445,7 @@ export default function TennisBookingPage() {
      </Card>
 
      {/* Third booking card */}
-     {/* <Card className="shadow-lg bg-white">
+     <Card className="shadow-lg bg-white">
             <CardHeader className="text-center p-2">
               <div className="mx-auto w-12 h-12 rounded-full flex items-center justify-center mb-1" style={{ backgroundColor: '#75BDE0' }}>
                 <Calendar className="w-6 h-6 text-white" />
@@ -479,7 +479,7 @@ export default function TennisBookingPage() {
                 ) : 'Random'}
               </Button>
             </CardContent>
-          </Card> */}
+          </Card>
 
      {/* Fourth booking card */}
      <Card className="shadow-lg bg-white">
