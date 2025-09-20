@@ -137,8 +137,8 @@ class VinhomesTennisBooking {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
+    console.log("🧪 [CARD 6] Reverse booking body:", body);
     const { jwtToken, bookingTargets } = body;
-
     if (!jwtToken || !Array.isArray(bookingTargets) || bookingTargets.length === 0) {
         return NextResponse.json({ message: "Invalid request body. 'jwtToken' and a 'bookingTargets' array are required." }, { status: 400 });
     }

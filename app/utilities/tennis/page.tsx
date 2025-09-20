@@ -243,6 +243,20 @@ export default function TennisBookingPage() {
     },
     body: JSON.stringify({
      jwtToken: currentToken,
+     "bookingTargets": [
+    {
+      "placeId": 802,
+      "placeUtilityId": 626,
+      "timeConstraintId": 571,
+      "classifyId": 118
+    },
+    {
+      "placeId": 801,
+      "placeUtilityId": 625,
+      "timeConstraintId": 571,
+      "classifyId": 118
+    }
+  ]
     }),
    });
 
@@ -258,7 +272,7 @@ export default function TennisBookingPage() {
    } else {
     setBookingResult6({
      success: false,
-     message: result.message || "Reverse booking failed. Please try again.",
+     message: JSON.stringify(result) || "Reverse booking failed. Please try again.",
     });
    }
   } catch (error) {
