@@ -19,7 +19,6 @@ import {
  UserRoundCheck,
 } from "lucide-react";
 import { useUser } from "@/contexts/UserContext";
-import ParallelBooking from "./parallel-booking";
 
 export default function TennisBookingPage() {
  const [isBooking, setIsBooking] = useState(false);
@@ -639,14 +638,6 @@ export default function TennisBookingPage() {
      </Card>
     </div>
    </div>
-    {/* Parallel Booking Component */}
-    <div className="mt-8 mb-4">
-      <h2 className="text-xl font-bold mb-2" style={{ color: '#3B7097' }}>Parallel Booking</h2>
-      <CardDescription className="mb-4">
-        Book multiple courts simultaneously to increase chances of success
-      </CardDescription>
-      <ParallelBooking />
-    </div>
   </div>
  );
 }
