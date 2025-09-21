@@ -19,6 +19,7 @@ import {
  UserRoundCheck,
 } from "lucide-react";
 import { useUser } from "@/contexts/UserContext";
+import ParallelBooking from "./parallel-booking";
 
 export default function TennisBookingPage() {
  const [isBooking, setIsBooking] = useState(false);
@@ -223,13 +224,13 @@ export default function TennisBookingPage() {
   );
 
  const handleBooking6 = async () => {
-  if (!currentToken) {
-   setBookingResult6({
-    success: false,
-    message: "Please login first to book tennis courts.",
-   });
-   return;
-  }
+  // if (!currentToken) {
+  //  setBookingResult6({
+  //   success: false,
+  //   message: "Please login first to book tennis courts.",
+  //  });
+  //  return;
+  // }
 
   setIsBooking6(true);
   setBookingResult6(null);
@@ -284,6 +285,7 @@ export default function TennisBookingPage() {
   } finally {
    setIsBooking6(false);
   }
+
  };
 
  const handleLogout = () => {
@@ -637,6 +639,14 @@ export default function TennisBookingPage() {
      </Card>
     </div>
    </div>
+    {/* Parallel Booking Component */}
+    <div className="mt-8 mb-4">
+      <h2 className="text-xl font-bold mb-2" style={{ color: '#3B7097' }}>Parallel Booking</h2>
+      <CardDescription className="mb-4">
+        Book multiple courts simultaneously to increase chances of success
+      </CardDescription>
+      <ParallelBooking />
+    </div>
   </div>
  );
 }

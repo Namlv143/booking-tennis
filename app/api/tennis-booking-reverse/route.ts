@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-// --- INTERFACES AND THE BOOKING CLASS (UNCHANGED FROM PREVIOUS VERSIONS) ---
+// --- INTERFACES AND THE BOOKING CLASS ---
 interface BookingDetails {
   jwtToken: string;
   placeId: number;
@@ -39,9 +39,10 @@ class VinhomesTennisBooking {
   // Static constants
   private static readonly BASE_URL = "https://vh.vinhomes.vn";
   private static readonly SECRET_KEY = "tqVtg9GqwUiKbHqkSG4BpMyXPu3BbpUHmzOqgEQa1KYJZ1Ckv8@@@";
-  private static readonly UTILITY_ID = 75;
-  private static readonly RESIDENT_TICKET_COUNT = 4;
-  private static readonly DEVICE_TYPE = "ANDROID";
+  // Changed to public static for access from GET handler
+  public static readonly UTILITY_ID = 75;
+  public static readonly RESIDENT_TICKET_COUNT = 4;
+  public static readonly DEVICE_TYPE = "ANDROID";
 
   private readonly details: BookingDetails;
 
@@ -63,14 +64,24 @@ class VinhomesTennisBooking {
     };
   }
   
-  private getBookingDate(): number {
+  // Changed to public for access from GET handler
+  public getBookingDate(): number {
+    // Get current date and adjust to Vietnam time (UTC+7)
     const now = new Date();
-    const vietnamTime = new Date(now.getTime() + 7 * 60 * 60 * 1000); 
-    const bookingDate = new Date(vietnamTime.getTime() + 24 * 60 * 60 * 1000);
-    return bookingDate.getTime();
+    const vietnamTime = new Date(now.getTime() + 7 * 60 * 60 * 1000);
+    
+    // Get tomorrow's date
+    const tomorrow = new Date(vietnamTime);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    // Set time to 8:30 AM specifically
+    tomorrow.setHours(8, 30, 0, 0);
+    
+    return tomorrow.getTime();
   }
 
-  private generateFromTime(hour: number, daysToAdd: number): number {
+  // Changed to public for access from GET handler
+  public generateFromTime(hour: number, daysToAdd: number): number {
     const targetDate = new Date();
     targetDate.setDate(targetDate.getDate() + daysToAdd);
     targetDate.setHours(hour, 0, 0, 0);
@@ -92,6 +103,7 @@ class VinhomesTennisBooking {
     const url = new URL(endpoint, VinhomesTennisBooking.BASE_URL);
     Object.entries(params).forEach(([key, value]) => url.searchParams.append(key, String(value)));
     const response = await fetch(url, { method: 'GET', headers: this.getHeaders(), cache: 'no-store' });
+    console.log("🧪 [endpoint]", endpoint, "url:", url);
     if (!response.ok) {
       throw new Error(`State update call failed for ${endpoint} with status ${response.status}`);
     }
@@ -101,8 +113,7 @@ class VinhomesTennisBooking {
     const bookingDate = this.getBookingDate();
     const fromTime = this.generateFromTime(18, 1);
     const { timeConstraintId, classifyId, placeUtilityId, placeId } = this.details;
-    
-    await this.makeStateUpdateCall(`/api/vhr/utility/v0/utility/${VinhomesTennisBooking.UTILITY_ID}/booking-time`, { bookingDate });
+    await this.makeStateUpdateCall(`/api/vhr/utility/v0/utility/${VinhomesTennisBooking.UTILITY_ID}/booking-time`, { bookingDate })
     await this.makeStateUpdateCall(`/api/vhr/utility/v0/utility/${VinhomesTennisBooking.UTILITY_ID}/classifies`, { timeConstraintId, monthlyTicket: false, fromTime });
     await this.makeStateUpdateCall(`/api/vhr/utility/v0/utility/${VinhomesTennisBooking.UTILITY_ID}/places`, { classifyId, timeConstraintId, monthlyTicket: false, fromTime });
     await this.makeStateUpdateCall('/api/vhr/utility/v0/utility/ticket-info', { bookingDate, placeUtilityId, timeConstraintId });
@@ -130,6 +141,40 @@ class VinhomesTennisBooking {
         throw new Error(`Final booking failed with status ${response.status}: ${errorText}`);
     }
     return response.json();
+  }
+}
+
+// --- GET HANDLER TO PREPARE BOOKING VALUES AHEAD OF TIME ---
+export async function GET() {
+  try {
+    // Create temporary instance to use public methods
+    const tempBooker = new VinhomesTennisBooking({} as BookingDetails);
+    
+    // Pre-calculate the values needed for booking
+    const bookingDate = tempBooker.getBookingDate();
+    const fromTime = tempBooker.generateFromTime(18, 1);
+    
+    // Format dates for readability
+    const readableBookingDate = new Date(bookingDate).toISOString();
+    const readableFromTime = new Date(fromTime).toISOString();
+    
+    // Return all pre-calculated values
+    return NextResponse.json({
+      bookingDate,
+      fromTime,
+      readableValues: {
+        bookingDate: readableBookingDate,
+        fromTime: readableFromTime
+      },
+      utilityId: VinhomesTennisBooking.UTILITY_ID,
+      residentTicketCount: VinhomesTennisBooking.RESIDENT_TICKET_COUNT,
+      deviceType: VinhomesTennisBooking.DEVICE_TYPE,
+      message: "Pre-calculated values ready for booking"
+    });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
+    console.error("❌ Error preparing booking values:", errorMessage);
+    return NextResponse.json({ message: "Error preparing booking values: " + errorMessage }, { status: 500 });
   }
 }
 
