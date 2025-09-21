@@ -789,7 +789,7 @@ export default function TennisBookingPage() {
          </AlertDescription>
         </Alert>
        )}
-      <div className="grid grid-cols-2 gap-2 mt-4">
+      <div className="grid lg:grid-cols-2 grid-cols-1 gap-2 mt-4">
        <Button
         onClick={handleBookBoth}
         disabled={isBookingBoth || isBooking1 || isBooking6 || !isLoggedIn}
