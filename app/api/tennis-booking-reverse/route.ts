@@ -1,8 +1,5 @@
 import { NextResponse } from "next/server";
 
-// Re-enable Edge runtime with proper parameter handling
-export const runtime = 'edge';
-
 // --- INTERFACES ---
 interface BookingDetails {
   jwtToken: string;
@@ -92,34 +89,11 @@ const generateChecksum = async (payload: BookingPayload): Promise<string> => {
 };
 
 const makeStateUpdateCall = async (endpoint: string, params: Record<string, any>, jwtToken: string): Promise<void> => {
-  try {
-    const url = new URL(endpoint, BASE_URL);
-    Object.entries(params).forEach(([key, value]) => url.searchParams.append(key, String(value)));
-    
-    // Create headers object explicitly
-    const headers = getHeaders(jwtToken);
-    
-    // Log request details for debugging
-    console.log(`Making request to ${url.toString()} with headers:`, JSON.stringify(headers));
-    
-    const response = await fetch(url.toString(), { 
-      method: 'GET', 
-      headers: headers, 
-      cache: 'no-store' 
-    });
-    
-    if (!response.ok) {
-      const errorText = await response.text().catch(() => 'No response text');
-      console.error(`Failed API call to ${endpoint}:`, {
-        status: response.status,
-        statusText: response.statusText,
-        errorText
-      });
-      throw new Error(`State update call failed for ${endpoint} with status ${response.status}: ${errorText}`);
-    }
-  } catch (error) {
-    console.error(`Error in makeStateUpdateCall for ${endpoint}:`, error);
-    throw error;
+  const url = new URL(endpoint, BASE_URL);
+  Object.entries(params).forEach(([key, value]) => url.searchParams.append(key, String(value)));
+  const response = await fetch(url, { method: 'GET', headers: getHeaders(jwtToken), cache: 'no-store' });
+  if (!response.ok) {
+    throw new Error(`State update call failed for ${endpoint} with status ${response.status}`);
   }
 };
 
@@ -128,83 +102,35 @@ const executeBookingFlow = async (details: BookingDetails): Promise<any> => {
   const fromTime = generateFromTime(18, 1);
   const { timeConstraintId, classifyId, placeUtilityId, placeId, jwtToken } = details;
   
-  await makeStateUpdateCall(`/api/vhr/utility/v0/utility/${UTILITY_ID}/booking-time`, { 
-    bookingDate: bookingDate,
-    utilityId: UTILITY_ID
-  }, jwtToken);
-  
-  await makeStateUpdateCall(`/api/vhr/utility/v0/utility/${UTILITY_ID}/classifies`, { 
-    timeConstraintId: Number(timeConstraintId), 
-    monthlyTicket: false, 
-    fromTime: fromTime,
-    utilityId: UTILITY_ID
-  }, jwtToken);
-  
-  await makeStateUpdateCall(`/api/vhr/utility/v0/utility/${UTILITY_ID}/places`, { 
-    classifyId: Number(classifyId), 
-    timeConstraintId: Number(timeConstraintId), 
-    monthlyTicket: false, 
-    fromTime: fromTime,
-    utilityId: UTILITY_ID
-  }, jwtToken);
-  // Add utilityId parameter and ensure all values are properly formatted
-  await makeStateUpdateCall('/api/vhr/utility/v0/utility/ticket-info', { 
-    bookingDate: bookingDate, 
-    placeUtilityId: Number(placeUtilityId), 
-    timeConstraintId: Number(timeConstraintId),
-    utilityId: UTILITY_ID 
-  }, jwtToken);
+  await makeStateUpdateCall(`/api/vhr/utility/v0/utility/${UTILITY_ID}/booking-time`, { bookingDate }, jwtToken);
+  await makeStateUpdateCall(`/api/vhr/utility/v0/utility/${UTILITY_ID}/classifies`, { timeConstraintId, monthlyTicket: false, fromTime }, jwtToken);
+  await makeStateUpdateCall(`/api/vhr/utility/v0/utility/${UTILITY_ID}/places`, { classifyId, timeConstraintId, monthlyTicket: false, fromTime }, jwtToken);
+  await makeStateUpdateCall('/api/vhr/utility/v0/utility/ticket-info', { bookingDate, placeUtilityId, timeConstraintId }, jwtToken);
 
-  // Ensure all payload values are explicitly formatted as the correct types
   const payload: BookingPayload = {
     bookingRequests: [{
-      bookingDate: Number(bookingDate),
-      placeId: Number(placeId),
-      timeConstraintId: Number(timeConstraintId),
-      utilityId: Number(UTILITY_ID),
-      residentTicket: Number(RESIDENT_TICKET_COUNT),
-      residentChildTicket: null, 
-      guestTicket: null, 
-      guestChildTicket: null,
+      bookingDate,
+      placeId,
+      timeConstraintId,
+      utilityId: UTILITY_ID,
+      residentTicket: RESIDENT_TICKET_COUNT,
+      residentChildTicket: null, guestTicket: null, guestChildTicket: null,
     }],
-    paymentMethod: null, 
-    vinClubPoint: null, 
-    deviceType: DEVICE_TYPE,
+    paymentMethod: null, vinClubPoint: null, deviceType: DEVICE_TYPE,
   };
   
   payload.cs = await generateChecksum(payload);
   
-  try {
-    const bookingUrl = new URL('/api/vhr/utility/v0/customer-utility/booking', BASE_URL);
-    const headers = getHeaders(jwtToken);
-    
-    console.log("Making final booking request with payload:", JSON.stringify(payload));
-    console.log("Using headers:", JSON.stringify(headers));
-    
-    const response = await fetch(bookingUrl.toString(), { 
-      method: 'POST', 
-      headers: headers, 
-      body: JSON.stringify(payload), 
-      cache: 'no-store' 
-    });
-    
-    if (!response.ok) {
-      const errorText = await response.text().catch(() => 'No response text');
-      console.error("Final booking failed:", {
-        status: response.status,
-        statusText: response.statusText,
-        errorText
-      });
+  const response = await fetch(
+      new URL('/api/vhr/utility/v0/customer-utility/booking', BASE_URL), 
+      { method: 'POST', headers: getHeaders(jwtToken), body: JSON.stringify(payload), cache: 'no-store' }
+  );
+  
+  if (!response.ok) {
+      const errorText = await response.text();
       throw new Error(`Final booking failed with status ${response.status}: ${errorText}`);
-    }
-    
-    const responseData = await response.json();
-    console.log("Booking response:", JSON.stringify(responseData));
-    return responseData;
-  } catch (error) {
-    console.error("Error in final booking:", error);
-    throw error;
   }
+  return response.json();
 };
 
 // --- POST HANDLER ---
