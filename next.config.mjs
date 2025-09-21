@@ -9,6 +9,14 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  experimental: {
+    // Optimize Edge Function deployment
+    optimizeServerReact: true,
+    // Better HTTP streaming
+    serverActions: {
+      bodySizeLimit: '2mb',
+    },
+  },
 }
 
 export default nextConfig

@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 
 // Force dynamic rendering for this route
 export const dynamic = 'force-dynamic'
+// Define runtime configuration for Edge Function
+export const runtime = 'edge'
 
 export async function GET() {
   try {

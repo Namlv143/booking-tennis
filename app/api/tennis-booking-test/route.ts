@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 
+// Define runtime configuration for Edge Function
+export const runtime = 'edge';
+
 // Types for better type safety
 interface BookingRequest {
  bookingDate: number;
