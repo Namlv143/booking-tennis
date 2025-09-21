@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
-// Define runtime configuration for Edge Function
-export const runtime = 'edge';
+// Comment out Edge runtime for now as it's causing headers issues
+// export const runtime = 'edge';
 
 // --- INTERFACES ---
 interface BookingDetails {
@@ -92,11 +92,34 @@ const generateChecksum = async (payload: BookingPayload): Promise<string> => {
 };
 
 const makeStateUpdateCall = async (endpoint: string, params: Record<string, any>, jwtToken: string): Promise<void> => {
-  const url = new URL(endpoint, BASE_URL);
-  Object.entries(params).forEach(([key, value]) => url.searchParams.append(key, String(value)));
-  const response = await fetch(url, { method: 'GET', headers: getHeaders(jwtToken), cache: 'no-store' });
-  if (!response.ok) {
-    throw new Error(`State update call failed for ${endpoint} with status ${JSON.stringify(response)}`);
+  try {
+    const url = new URL(endpoint, BASE_URL);
+    Object.entries(params).forEach(([key, value]) => url.searchParams.append(key, String(value)));
+    
+    // Create headers object explicitly
+    const headers = getHeaders(jwtToken);
+    
+    // Log request details for debugging
+    console.log(`Making request to ${url.toString()} with headers:`, JSON.stringify(headers));
+    
+    const response = await fetch(url.toString(), { 
+      method: 'GET', 
+      headers: headers, 
+      cache: 'no-store' 
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => 'No response text');
+      console.error(`Failed API call to ${endpoint}:`, {
+        status: response.status,
+        statusText: response.statusText,
+        errorText
+      });
+      throw new Error(`State update call failed for ${endpoint} with status ${response.status}: ${errorText}`);
+    }
+  } catch (error) {
+    console.error(`Error in makeStateUpdateCall for ${endpoint}:`, error);
+    throw error;
   }
 };
 
@@ -124,16 +147,37 @@ const executeBookingFlow = async (details: BookingDetails): Promise<any> => {
   
   payload.cs = await generateChecksum(payload);
   
-  const response = await fetch(
-      new URL('/api/vhr/utility/v0/customer-utility/booking', BASE_URL), 
-      { method: 'POST', headers: getHeaders(jwtToken), body: JSON.stringify(payload), cache: 'no-store' }
-  );
-  
-  if (!response.ok) {
-      const errorText = await response.text();
+  try {
+    const bookingUrl = new URL('/api/vhr/utility/v0/customer-utility/booking', BASE_URL);
+    const headers = getHeaders(jwtToken);
+    
+    console.log("Making final booking request with payload:", JSON.stringify(payload));
+    console.log("Using headers:", JSON.stringify(headers));
+    
+    const response = await fetch(bookingUrl.toString(), { 
+      method: 'POST', 
+      headers: headers, 
+      body: JSON.stringify(payload), 
+      cache: 'no-store' 
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => 'No response text');
+      console.error("Final booking failed:", {
+        status: response.status,
+        statusText: response.statusText,
+        errorText
+      });
       throw new Error(`Final booking failed with status ${response.status}: ${errorText}`);
+    }
+    
+    const responseData = await response.json();
+    console.log("Booking response:", JSON.stringify(responseData));
+    return responseData;
+  } catch (error) {
+    console.error("Error in final booking:", error);
+    throw error;
   }
-  return response.json();
 };
 
 // --- POST HANDLER ---
