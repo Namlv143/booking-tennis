@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
-// Comment out Edge runtime for now as it's causing headers issues
-// export const runtime = 'edge';
+// Re-enable Edge runtime with proper parameter handling
+export const runtime = 'edge';
 
 // --- INTERFACES ---
 interface BookingDetails {
@@ -128,21 +128,48 @@ const executeBookingFlow = async (details: BookingDetails): Promise<any> => {
   const fromTime = generateFromTime(18, 1);
   const { timeConstraintId, classifyId, placeUtilityId, placeId, jwtToken } = details;
   
-  await makeStateUpdateCall(`/api/vhr/utility/v0/utility/${UTILITY_ID}/booking-time`, { bookingDate }, jwtToken);
-  await makeStateUpdateCall(`/api/vhr/utility/v0/utility/${UTILITY_ID}/classifies`, { timeConstraintId, monthlyTicket: false, fromTime }, jwtToken);
-  await makeStateUpdateCall(`/api/vhr/utility/v0/utility/${UTILITY_ID}/places`, { classifyId, timeConstraintId, monthlyTicket: false, fromTime }, jwtToken);
-  await makeStateUpdateCall('/api/vhr/utility/v0/utility/ticket-info', { bookingDate, placeUtilityId, timeConstraintId }, jwtToken);
+  await makeStateUpdateCall(`/api/vhr/utility/v0/utility/${UTILITY_ID}/booking-time`, { 
+    bookingDate: bookingDate,
+    utilityId: UTILITY_ID
+  }, jwtToken);
+  
+  await makeStateUpdateCall(`/api/vhr/utility/v0/utility/${UTILITY_ID}/classifies`, { 
+    timeConstraintId: Number(timeConstraintId), 
+    monthlyTicket: false, 
+    fromTime: fromTime,
+    utilityId: UTILITY_ID
+  }, jwtToken);
+  
+  await makeStateUpdateCall(`/api/vhr/utility/v0/utility/${UTILITY_ID}/places`, { 
+    classifyId: Number(classifyId), 
+    timeConstraintId: Number(timeConstraintId), 
+    monthlyTicket: false, 
+    fromTime: fromTime,
+    utilityId: UTILITY_ID
+  }, jwtToken);
+  // Add utilityId parameter and ensure all values are properly formatted
+  await makeStateUpdateCall('/api/vhr/utility/v0/utility/ticket-info', { 
+    bookingDate: bookingDate, 
+    placeUtilityId: Number(placeUtilityId), 
+    timeConstraintId: Number(timeConstraintId),
+    utilityId: UTILITY_ID 
+  }, jwtToken);
 
+  // Ensure all payload values are explicitly formatted as the correct types
   const payload: BookingPayload = {
     bookingRequests: [{
-      bookingDate,
-      placeId,
-      timeConstraintId,
-      utilityId: UTILITY_ID,
-      residentTicket: RESIDENT_TICKET_COUNT,
-      residentChildTicket: null, guestTicket: null, guestChildTicket: null,
+      bookingDate: Number(bookingDate),
+      placeId: Number(placeId),
+      timeConstraintId: Number(timeConstraintId),
+      utilityId: Number(UTILITY_ID),
+      residentTicket: Number(RESIDENT_TICKET_COUNT),
+      residentChildTicket: null, 
+      guestTicket: null, 
+      guestChildTicket: null,
     }],
-    paymentMethod: null, vinClubPoint: null, deviceType: DEVICE_TYPE,
+    paymentMethod: null, 
+    vinClubPoint: null, 
+    deviceType: DEVICE_TYPE,
   };
   
   payload.cs = await generateChecksum(payload);
