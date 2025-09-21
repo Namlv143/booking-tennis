@@ -7,6 +7,7 @@ interface BookingDetails {
   placeUtilityId: number;
   timeConstraintId: number;
   classifyId: number;
+  precomputedChecksum: string; // Add pre-computed checksum
 }
 
 interface BookingPayload {
@@ -32,6 +33,24 @@ const SECRET_KEY = "tqVtg9GqwUiKbHqkSG4BpMyXPu3BbpUHmzOqgEQa1KYJZ1Ckv8@@@";
 const UTILITY_ID = 75;
 const RESIDENT_TICKET_COUNT = 4;
 const DEVICE_TYPE = "ANDROID";
+
+// --- PRE-COMPUTED API ENDPOINTS FOR INSTANT ACCESS ---
+const API_ENDPOINTS = {
+  BOOKING_TIME: `/api/vhr/utility/v0/utility/${UTILITY_ID}/booking-time`,
+  CLASSIFIES: `/api/vhr/utility/v0/utility/${UTILITY_ID}/classifies`, 
+  PLACES: `/api/vhr/utility/v0/utility/${UTILITY_ID}/places`,
+  TICKET_INFO: '/api/vhr/utility/v0/utility/ticket-info',
+  FINAL_BOOKING: '/api/vhr/utility/v0/customer-utility/booking'
+} as const;
+
+// Pre-compute static URL objects for maximum speed
+const STATIC_URLS = {
+  BOOKING_TIME: new URL(API_ENDPOINTS.BOOKING_TIME, BASE_URL),
+  CLASSIFIES: new URL(API_ENDPOINTS.CLASSIFIES, BASE_URL),
+  PLACES: new URL(API_ENDPOINTS.PLACES, BASE_URL),
+  TICKET_INFO: new URL(API_ENDPOINTS.TICKET_INFO, BASE_URL),
+  FINAL_BOOKING: new URL(API_ENDPOINTS.FINAL_BOOKING, BASE_URL)
+} as const;
 
 // --- OPTIMIZED FUNCTIONS ---
 
@@ -99,19 +118,24 @@ const generateChecksum = async (payload: BookingPayload): Promise<string> => {
   const data = textEncoder.encode(interpolatedString);
   const hashBuffer = await crypto.subtle.digest("SHA-256", data);
   
-  // Exact same logic as original - Array.from().map().join()
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+  // Optimized hex conversion - faster than Array.from().map().join()
+  const hashArray = new Uint8Array(hashBuffer);
+  let hexString = '';
+  for (let i = 0; i < hashArray.length; i++) {
+    hexString += hashArray[i].toString(16).padStart(2, "0");
+  }
+  return hexString;
 };
 
 // Optimized fetch with proper error handling and timeout
 const makeStateUpdateCall = async (
-  endpoint: string, 
+  precomputedUrl: URL, 
   params: Record<string, any>, 
   jwtToken: string,
   timeoutMs: number = 5000
 ): Promise<void> => {
-  const url = new URL(endpoint, BASE_URL);
+  // Clone the pre-computed URL and add parameters
+  const url = new URL(precomputedUrl);
   Object.entries(params).forEach(([key, value]) => url.searchParams.append(key, String(value)));
   
   const controller = new AbortController();
@@ -128,8 +152,8 @@ const makeStateUpdateCall = async (
     if (!response.ok) {
       const errorText = await response.text();
       // Only log errors, not successful requests
-      console.error(`❌ ${endpoint}: ${response.status} - ${errorText}`);
-      throw new Error(`State update call failed for ${endpoint}: ${response.status} ${response.statusText} - ${errorText}`);
+      console.error(`❌ ${url.pathname}: ${response.status} - ${errorText}`);
+      throw new Error(`State update call failed for ${url.pathname}: ${response.status} ${response.statusText} - ${errorText}`);
     }
     
     // No success logging for performance
@@ -144,16 +168,9 @@ const makeStateUpdateCall = async (
 const executeBookingFlow = async (details: BookingDetails): Promise<any> => {
   const bookingDate = getBookingDate();
   const fromTime = generateFromTime(18, 1);
-  const { timeConstraintId, classifyId, placeUtilityId, placeId, jwtToken } = details;
+  const { timeConstraintId, classifyId, placeUtilityId, placeId, jwtToken, precomputedChecksum } = details;
   
-  // SAFE SEQUENTIAL: Server expects step-by-step session state updates
-  // These calls update server-side session state and must be done in order
-  await makeStateUpdateCall(`/api/vhr/utility/v0/utility/${UTILITY_ID}/booking-time`, { bookingDate }, jwtToken);
-  await makeStateUpdateCall(`/api/vhr/utility/v0/utility/${UTILITY_ID}/classifies`, { timeConstraintId, monthlyTicket: false, fromTime }, jwtToken);
-  await makeStateUpdateCall(`/api/vhr/utility/v0/utility/${UTILITY_ID}/places`, { classifyId, timeConstraintId, monthlyTicket: false, fromTime }, jwtToken);
-  await makeStateUpdateCall('/api/vhr/utility/v0/utility/ticket-info', { bookingDate, placeUtilityId, timeConstraintId }, jwtToken);
-
-  // Pre-build payload structure
+  // ULTRA-OPTIMIZATION: Use pre-computed checksum - NO calculation needed!
   const payload: BookingPayload = {
     bookingRequests: [{
       bookingDate,
@@ -168,10 +185,18 @@ const executeBookingFlow = async (details: BookingDetails): Promise<any> => {
     paymentMethod: null, 
     vinClubPoint: null, 
     deviceType: DEVICE_TYPE,
+    cs: precomputedChecksum // Checksum already calculated!
   };
   
-  // Generate checksum
-  payload.cs = await generateChecksum(payload);
+  // SAFE SEQUENTIAL: Server expects step-by-step session state updates
+  // These calls update server-side session state and must be done in order
+  // Using pre-computed URLs for INSTANT execution
+  await makeStateUpdateCall(STATIC_URLS.BOOKING_TIME, { bookingDate }, jwtToken);
+  await makeStateUpdateCall(STATIC_URLS.CLASSIFIES, { timeConstraintId, monthlyTicket: false, fromTime }, jwtToken);
+  await makeStateUpdateCall(STATIC_URLS.PLACES, { classifyId, timeConstraintId, monthlyTicket: false, fromTime }, jwtToken);
+  await makeStateUpdateCall(STATIC_URLS.TICKET_INFO, { bookingDate, placeUtilityId, timeConstraintId }, jwtToken);
+
+  // No checksum calculation needed - already in payload!
   
   // Final booking request with timeout and better error handling
   const controller = new AbortController();
@@ -179,7 +204,7 @@ const executeBookingFlow = async (details: BookingDetails): Promise<any> => {
   
   try {
     const response = await fetch(
-      new URL('/api/vhr/utility/v0/customer-utility/booking', BASE_URL), 
+      STATIC_URLS.FINAL_BOOKING, 
       { 
         method: 'POST', 
         headers: getHeaders(jwtToken), 
@@ -219,7 +244,7 @@ export async function POST(request: Request) {
     }
 
     // Pre-validate required booking target fields
-    const requiredFields = ['placeId', 'placeUtilityId', 'timeConstraintId', 'classifyId'];
+    const requiredFields = ['placeId', 'placeUtilityId', 'timeConstraintId', 'classifyId', 'precomputedChecksum'];
     for (const field of requiredFields) {
       if (bookingTarget[field] === undefined || bookingTarget[field] === null) {
         return NextResponse.json(
@@ -229,12 +254,14 @@ export async function POST(request: Request) {
       }
     }
     
+    // MAXIMUM OPTIMIZATION: Use checksum from frontend - NO calculation needed!
     const bookingDetails: BookingDetails = {
       jwtToken,
       placeId: bookingTarget.placeId,
       placeUtilityId: bookingTarget.placeUtilityId,
       timeConstraintId: bookingTarget.timeConstraintId,
       classifyId: bookingTarget.classifyId,
+      precomputedChecksum: bookingTarget.precomputedChecksum, // From frontend!
     };
 
     const results = await executeBookingFlow(bookingDetails);
