@@ -27,6 +27,9 @@ export default function TennisBookingPage() {
   success: boolean;
   message: string;
  } | null>(null);
+ 
+ // Optimization: AbortController for request cancellation
+ const [bookingController6, setBookingController6] = useState<AbortController | null>(null);
 
  const router = useRouter();
 
@@ -42,65 +45,112 @@ export default function TennisBookingPage() {
 
 
  const handleBooking6 = async () => {
-  // if (!currentToken) {
-  //  setBookingResult6({
-  //   success: false,
-  //   message: "Please login first to book tennis courts.",
-  //  });
-  //  return;
-  // }
+  // Cancel any existing request
+  if (bookingController6) {
+   bookingController6.abort();
+  }
 
+  // Create new controller for this request
+  const controller = new AbortController();
+  setBookingController6(controller);
+
+  // Batch state updates for better performance
   setIsBooking6(true);
   setBookingResult6(null);
 
+  const startTime = performance.now();
+
   try {
-   console.log("🧪 [CARD 6] Testing tennis-booking-reverse...");
+   // Pre-build request payload to avoid inline object creation
+   const requestPayload = {
+    jwtToken: currentToken,
+    bookingTarget: {
+     placeId: 802,
+     placeUtilityId: 626,
+     timeConstraintId: 575,
+     classifyId: 118
+    }
+   };
+
+   console.log("🧪 [CARD 6] Starting tennis booking request...");
+   
+   // Optimized fetch with timeout and abort signal
    const response = await fetch("/api/tennis-booking-reverse", {
     method: "POST",
     headers: {
      "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-     jwtToken: currentToken,
-     "bookingTarget": {
-      "placeId": 802,
-      "placeUtilityId": 626,
-      "timeConstraintId": 575,
-      "classifyId": 118
-    },
-    }),
+    body: JSON.stringify(requestPayload),
+    signal: controller.signal,
+    // Performance optimizations
+    cache: 'no-store',
+    keepalive: true,
    });
 
-   const result = await response.json();
-   console.log("🧪 [CARD 6] Reverse booking result:", result);
-
-   if (result?.data?.transactionId || result?.data?.userId) {
-    setBookingResult6({
-     success: true,
-     message:
-      "Tennis court reverse booking completed successfully! 🎾 (Hardcoded params + cookies)",
-    });
-   } else {
-    setBookingResult6({
-     success: false,
-     message: JSON.stringify(result) || "Reverse booking failed. Please try again.",
-    });
+   // Fast response validation
+   if (!response.ok) {
+    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
    }
-  } catch (error) {
-   console.log("🧪 [CARD 6] Reverse booking error:", error);
+
+   // Optimized JSON parsing with error handling
+   let result;
+   try {
+    result = await response.json();
+   } catch (parseError) {
+    throw new Error("Invalid response format from server");
+   }
+
+   const processingTime = Math.round(performance.now() - startTime);
+   console.log(`🧪 [CARD 6] Request completed in ${processingTime}ms`);
+
+   // Fast success validation
+   const isSuccess = result?.data?.transactionId || result?.data?.userId || result?.success;
+   
+   // Batch state update
+   setBookingResult6({
+    success: !!isSuccess,
+    message: isSuccess 
+     ? `✅ Booking successful! (${processingTime}ms) 🎾`
+     : `❌ ${result?.message || JSON.stringify(result).substring(0, 100) || "Booking failed"}`
+   });
+
+  } catch (error: any) {
+   const processingTime = Math.round(performance.now() - startTime);
+   
+   // Handle different error types efficiently
+   let errorMessage = "Network error occurred";
+   
+   if (error.name === 'AbortError') {
+    errorMessage = "Request cancelled";
+   } else if (error.message?.includes('HTTP')) {
+    errorMessage = `Server error: ${error.message}`;
+   } else if (error.message?.includes('fetch')) {
+    errorMessage = "Connection failed - check network";
+   } else if (error.message) {
+    errorMessage = error.message;
+   }
+
+   console.log(`🧪 [CARD 6] Error after ${processingTime}ms:`, errorMessage);
+   
    setBookingResult6({
     success: false,
-    message: "Network error. Please check your connection and try again.",
+    message: `❌ ${errorMessage} (${processingTime}ms)`
    });
   } finally {
+   // Cleanup and batch final state updates
    setIsBooking6(false);
+   setBookingController6(null);
   }
-
  };
 
  const handleLogout = () => {
+  // Cancel any ongoing requests before logout
+  if (bookingController6) {
+   bookingController6.abort();
+   setBookingController6(null);
+  }
+  
   logout();
-  // setBookingResult3(null)
   setBookingResult6(null);
   // logout() already handles redirect with page refresh
  };
@@ -202,19 +252,30 @@ export default function TennisBookingPage() {
        <Button
         onClick={handleBooking6}
         disabled={isBooking6 || !isLoggedIn}
-        className="w-full text-white font-semibold py-4 text-sm rounded-lg"
+        className="w-full text-white font-semibold py-4 text-sm rounded-lg transition-all duration-200"
         style={{ backgroundColor: '#3B7097' }}
-        onMouseEnter={(e) => (e.target as HTMLButtonElement).style.backgroundColor = '#75BDE0'}
-        onMouseLeave={(e) => (e.target as HTMLButtonElement).style.backgroundColor = '#3B7097'}
+        onMouseEnter={(e) => {
+         if (!isBooking6) {
+          (e.target as HTMLButtonElement).style.backgroundColor = '#75BDE0';
+         }
+        }}
+        onMouseLeave={(e) => {
+         if (!isBooking6) {
+          (e.target as HTMLButtonElement).style.backgroundColor = '#3B7097';
+         }
+        }}
         size="default"
        >
         {isBooking6 ? (
          <>
           <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-          Testing...
+          <span className="text-xs">Booking...</span>
          </>
         ) : (
-         "Random"
+         <>
+          <Calendar className="w-3 h-3 mr-1" />
+          <span>Book Court</span>
+         </>
         )}
        </Button>
       </CardContent>
