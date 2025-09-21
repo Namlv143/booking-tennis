@@ -96,7 +96,7 @@ const makeStateUpdateCall = async (endpoint: string, params: Record<string, any>
   Object.entries(params).forEach(([key, value]) => url.searchParams.append(key, String(value)));
   const response = await fetch(url, { method: 'GET', headers: getHeaders(jwtToken), cache: 'no-store' });
   if (!response.ok) {
-    throw new Error(`State update call failed for ${endpoint} with status ${response.status}`);
+    throw new Error(`State update call failed for ${endpoint} with status ${response}`);
   }
 };
 
