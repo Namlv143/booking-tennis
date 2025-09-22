@@ -46,33 +46,34 @@ async function generateChecksum(bookingData: any) {
  const hashArray = Array.from(new Uint8Array(hashBuffer));
  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
 }
-const generateFromTime = (hour: number, daysToAdd: number): number => {
- const now = Date.now();
- const targetDate = new Date(now);
- targetDate.setDate(targetDate.getDate() + daysToAdd);
- targetDate.setHours(hour, 0, 0, 0);
- return targetDate.getTime();
-};
-/**
- * Generates the booking date timestamp for tomorrow.
- * @returns {number} Timestamp in milliseconds.
- */
-function getBookingDate() {
- // Note: This calculates "tomorrow" based on the server's time.
- // Ensure your server is set to a timezone that aligns with Vietnam's booking window (e.g., UTC).
- const tomorrow = new Date();
- tomorrow.setDate(tomorrow.getDate() + 1);
- // Set to the beginning of the day in a way that the API expects
- tomorrow.setHours(0, 0, 0, 0);
- return tomorrow.getTime();
-}
+// const generateFromTime = (hour: number, daysToAdd: number): number => {
+//  const now = Date.now();
+//  const targetDate = new Date(now);
+//  targetDate.setDate(targetDate.getDate() + daysToAdd);
+//  targetDate.setHours(hour, 0, 0, 0);
+//  return targetDate.getTime();
+// };
+// /**
+//  * Generates the booking date timestamp for tomorrow.
+//  * @returns {number} Timestamp in milliseconds.
+//  */
+// function getBookingDate() {
+//  // Note: This calculates "tomorrow" based on the server's time.
+//  // Ensure your server is set to a timezone that aligns with Vietnam's booking window (e.g., UTC).
+//  const tomorrow = new Date();
+//  tomorrow.setDate(tomorrow.getDate() + 1);
+//  // Set to the beginning of the day in a way that the API expects
+//  tomorrow.setHours(0, 0, 0, 0);
+//  return tomorrow.getTime();
+// }
 
 /**
  * The main API handler for the booking flow.
  */
 
 export async function POST(req: any) {
- const { jwtToken, checksum, bookingDate, fromTime, bookingTarget } = await req.json();
+ const hardcodedToken = process.env.HARDCODED_JWT_TOKEN;
+ const { jwtToken, bookingDate, fromTime, bookingTarget, isHardcoded } = await req.json();
  const { placeId, placeUtilityId, timeConstraintId, classifyId } = bookingTarget;
 
  // Best Practice: Create a new session for each API call to keep user sessions isolated.
@@ -88,7 +89,7 @@ export async function POST(req: any) {
    "app-version-name": "1.5.5",
    "device-inf": "PHY110 OPPO 35",
    "accept-language": "vi",
-   "x-vinhome-token": jwtToken,
+   "x-vinhome-token": isHardcoded ? hardcodedToken : jwtToken,
    "device-id": "51a9e0d3fcb8574c",
    host: "vh.vinhomes.vn",
    "content-type": "application/json; charset=UTF-8",
