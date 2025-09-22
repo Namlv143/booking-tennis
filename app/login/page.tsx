@@ -51,7 +51,7 @@ export default function LoginPage() {
                   message: "Login successful! Redirecting to utilities...",
                   data: result,
                 })
-                location.href = "/utilities/tennis"
+                location.href = "/utilities/s1"
       } else {
         setLoginResult({
           success: false,

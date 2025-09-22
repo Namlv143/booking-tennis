@@ -90,7 +90,7 @@ export default function UtilitiesPage() {
   }
 
   const handleGoToBooking = () => {
-    router.push("/utilities/tennis")
+    router.push("/utilities/s1")
   }
 
   const handleCopyToken = async () => {

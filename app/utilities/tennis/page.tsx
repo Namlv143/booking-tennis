@@ -24,14 +24,14 @@ import { useUser } from "@/contexts/UserContext";
 const BOOKING_TARGET = {
  placeId: 802,
  placeUtilityId: 626,
- timeConstraintId: 575,
+ timeConstraintId: 571,
  classifyId: 118
 } as const;
 
 const BOOKING_TARGET_1 = {
  placeId: 801,
  placeUtilityId: 625,
- timeConstraintId: 575,
+ timeConstraintId: 571,
  classifyId: 118
 } as const;
 

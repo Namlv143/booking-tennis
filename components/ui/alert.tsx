@@ -22,13 +22,35 @@ const alertVariants = cva(
 function Alert({
   className,
   variant,
+  autoClose = false,
+  onClose,
   ...props
-}: React.ComponentProps<'div'> & VariantProps<typeof alertVariants>) {
+}: React.ComponentProps<'div'> & VariantProps<typeof alertVariants> & {
+  autoClose?: boolean;
+  onClose?: () => void;
+}) {
+  const [isVisible, setIsVisible] = React.useState(true);
+
+  React.useEffect(() => {
+    if (autoClose && onClose) {
+      const timer = setTimeout(() => {
+        setIsVisible(false);
+        setTimeout(() => onClose(), 300); // Allow fade out animation
+      }, 5000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [autoClose, onClose]);
+
+  if (!isVisible) {
+    return null;
+  }
+
   return (
     <div
       data-slot="alert"
       role="alert"
-      className={cn(alertVariants({ variant }), className)}
+      className={cn(alertVariants({ variant }), className, "transition-opacity duration-300")}
       {...props}
     />
   )
