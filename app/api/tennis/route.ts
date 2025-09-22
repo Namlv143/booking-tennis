@@ -3,6 +3,16 @@ import { HttpsCookieAgent } from "http-cookie-agent/http";
 import { CookieJar } from "tough-cookie";
 import crypto from "crypto";
 import { NextResponse } from "next/server";
+import http from 'http';
+const HttpAgent = require('agentkeepalive').HttpAgent;
+
+const keepaliveAgent = new HttpAgent({
+  maxSockets: 100,
+  maxFreeSockets: 10,
+  timeout: 60000, // active socket keepalive for 60 seconds
+  freeSocketTimeout: 30000, // free socket keepalive for 30 seconds
+});
+
 
 // --- CONFIGURATION - All data is pre-configured for maximum speed ---
 const BASE_URL = "https://vh.vinhomes.vn";
@@ -68,8 +78,12 @@ export async function POST(req: any) {
  // Best Practice: Create a new session for each API call to keep user sessions isolated.
  const cookieJar = new CookieJar();
  const sessionClient = axios.create({
-  httpsAgent: new HttpsCookieAgent({ cookies: { jar: cookieJar } }),
-  headers: {
+  httpAgent: keepaliveAgent,
+  httpsAgent: new HttpsCookieAgent({ 
+    cookies: { jar: cookieJar },
+    // Tích hợp agentkeepalive vào bên trong HttpsCookieAgent
+    ...keepaliveAgent.options 
+}),  headers: {
    "user-agent": "Dart/3.7 (dart:io)",
    "app-version-name": "1.5.5",
    "device-inf": "PHY110 OPPO 35",
