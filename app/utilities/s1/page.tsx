@@ -300,7 +300,7 @@ export default function TennisBookingPage() {
        </AlertDescription>
       </Alert>
      )}
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4 mt-2">
      {/* First booking card - Testing tennis-booking */}
      <Card className="shadow-lg bg-white">
       <CardHeader className="text-center p-2">
