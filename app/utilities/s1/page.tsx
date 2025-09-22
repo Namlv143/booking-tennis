@@ -355,7 +355,7 @@ export default function TennisBookingPage() {
        >
         <Calendar className="w-6 h-6 text-white" />
        </div>
-       <CardTitle className="text-lg font-bold text-gray-800">S1.03</CardTitle>
+       <CardTitle className="text-lg font-bold text-gray-800">S1.01</CardTitle>
       </CardHeader>
 
       <CardContent className="space-y-1 px-4 py-2">
@@ -384,7 +384,7 @@ export default function TennisBookingPage() {
         ) : (
          <>
           <Calendar className="w-3 h-3 mr-1" />
-          <span>10h-12h</span>
+          <span>18h-20h</span>
          </>
         )}
        </Button>
@@ -400,7 +400,7 @@ export default function TennisBookingPage() {
        >
         <Calendar className="w-6 h-6 text-white" />
        </div>
-       <CardTitle className="text-lg font-bold text-gray-800">S1.04</CardTitle>
+       <CardTitle className="text-lg font-bold text-gray-800">S1.02</CardTitle>
       </CardHeader>
 
       <CardContent className="space-y-1 px-4 py-2">
@@ -429,7 +429,7 @@ export default function TennisBookingPage() {
         ) : (
          <>
           <Calendar className="w-3 h-3 mr-1" />
-          <span>10h-12h</span>
+          <span>18h-20h</span>
          </>
         )}
        </Button>
