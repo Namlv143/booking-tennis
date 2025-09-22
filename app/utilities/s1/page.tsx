@@ -43,9 +43,13 @@ export default function TennisBookingPage() {
  const [isBookingS1, setIsBookingS1] = useState(false);
  const [isBookingS2, setIsBookingS2] = useState(false);
  const [isBookingS3, setIsBookingS3] = useState(false);
+ const [isBookingS4, setIsBookingS4] = useState(false);
+ const [isBookingS5, setIsBookingS5] = useState(false);
  const [bookingResultS1, setBookingResultS1] = useState<any>(null);
  const [bookingResultS2, setBookingResultS2] = useState<any>(null);
  const [bookingResultS3, setBookingResultS3] = useState<any>(null);
+ const [bookingResultS4, setBookingResultS4] = useState<any>(null);
+ const [bookingResultS5, setBookingResultS5] = useState<any>(null);
  const router = useRouter();
  const bookingDate = getBookingDate();
  const fromTime = generateFromTime(18, 1);
@@ -65,6 +69,8 @@ export default function TennisBookingPage() {
   setBookingResultS1(null);
   setBookingResultS2(null);
   setBookingResultS3(null);
+  setBookingResultS4(null);
+  setBookingResultS5(null);
  };
  const handleBookingS1 = async () => {
   setIsBookingS1(true); // Bắt đầu loading, vô hiệu hóa nút
@@ -173,6 +179,76 @@ export default function TennisBookingPage() {
    setBookingResultS3(error);
   } finally {
    setIsBookingS3(false);
+  }
+ };
+
+ const handleBookingS4 = async () => {
+  setIsBookingS4(true);
+  setBookingResultS4(null);
+
+  try {
+   const response = await fetch("/api/tennis", {
+    method: "POST",
+    headers: {
+     "Content-Type": "application/json",
+    },
+    cache: "no-store" as RequestCache,
+    keepalive: true,
+    body: JSON.stringify({
+     jwtToken: currentToken,
+     bookingDate,
+     fromTime,
+     bookingTarget: {
+      placeId: 801,
+      placeUtilityId: 625,
+      timeConstraintId: 576,
+      classifyId: 118,
+     },
+    }),
+   });
+
+   const result = await response.json();
+   console.log("result", JSON.stringify(result));
+   setBookingResultS4(result);
+  } catch (error) {
+   setBookingResultS4(error);
+  } finally {
+   setIsBookingS4(false);
+  }
+ };
+
+ const handleBookingS5 = async () => {
+  setIsBookingS5(true);
+  setBookingResultS5(null);
+
+  try {
+   const response = await fetch("/api/tennis", {
+    method: "POST",
+    headers: {
+     "Content-Type": "application/json",
+    },
+    cache: "no-store" as RequestCache,
+    keepalive: true,
+    body: JSON.stringify({
+     jwtToken: currentToken,
+     bookingDate,
+     fromTime,
+     bookingTarget: {
+      placeId: 802,
+      placeUtilityId: 626,
+      timeConstraintId: 576,
+      classifyId: 118,
+     },
+    }),
+   });
+
+   const result = await response.json();
+   console.log("result", JSON.stringify(result));
+   setBookingResultS5(result);
+  } catch (error) {
+   setBookingResultS5(error);
+  } finally {
+   setIsBookingS5(false);
   }
  };
  if (isLoading) {
@@ -296,6 +372,48 @@ export default function TennisBookingPage() {
          {bookingResultS3?.success
           ? "Booking successful"
           : bookingResultS3?.error?.message}
+        </div>
+       </AlertDescription>
+      </Alert>
+     )}
+     {bookingResultS4 && (
+      <Alert
+       className={
+        bookingResultS4.success
+         ? "border-green-200 bg-green-50 mt-2"
+         : "border-red-200 bg-red-50 mt-2"
+       }
+       autoClose={true}
+       onClose={() => setBookingResultS4(null)}
+      >
+       <AlertDescription
+        className={bookingResultS4.success ? "text-green-800" : "text-red-800"}
+       >
+        <div className="text-xs">
+         {bookingResultS4?.success
+          ? "Booking successful"
+          : bookingResultS4?.error?.message}
+        </div>
+       </AlertDescription>
+      </Alert>
+     )}
+     {bookingResultS5 && (
+      <Alert
+       className={
+        bookingResultS5.success
+         ? "border-green-200 bg-green-50 mt-2"
+         : "border-red-200 bg-red-50 mt-2"
+       }
+       autoClose={true}
+       onClose={() => setBookingResultS5(null)}
+      >
+       <AlertDescription
+        className={bookingResultS5.success ? "text-green-800" : "text-red-800"}
+       >
+        <div className="text-xs">
+         {bookingResultS5?.success
+          ? "Booking successful"
+          : bookingResultS5?.error?.message}
         </div>
        </AlertDescription>
       </Alert>
@@ -430,6 +548,96 @@ export default function TennisBookingPage() {
          <>
           <Calendar className="w-3 h-3 mr-1" />
           <span>18h-20h</span>
+         </>
+        )}
+       </Button>
+      </CardContent>
+     </Card>
+
+     {/* Fourth booking card */}
+     <Card className="shadow-lg bg-white">
+      <CardHeader className="text-center p-2">
+       <div
+        className="mx-auto w-12 h-12 rounded-full flex items-center justify-center mb-1"
+        style={{ backgroundColor: "#75BDE0" }}
+       >
+        <Calendar className="w-6 h-6 text-white" />
+       </div>
+       <CardTitle className="text-lg font-bold text-gray-800">S1.02</CardTitle>
+      </CardHeader>
+
+      <CardContent className="space-y-1 px-4 py-2">
+       <Button
+        onClick={handleBookingS4}
+        disabled={isBookingS4 || !isLoggedIn}
+        className="w-full text-white font-semibold py-4 text-sm rounded-lg transition-all duration-200"
+        style={{ backgroundColor: "#3B7097" }}
+        onMouseEnter={(e) => {
+         if (!isBookingS4) {
+          (e.target as HTMLButtonElement).style.backgroundColor = "#75BDE0";
+         }
+        }}
+        onMouseLeave={(e) => {
+         if (!isBookingS4) {
+          (e.target as HTMLButtonElement).style.backgroundColor = "#3B7097";
+         }
+        }}
+        size="default"
+       >
+        {isBookingS4 ? (
+         <>
+          <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+          <span className="text-xs">Booking...</span>
+         </>
+        ) : (
+         <>
+          <Calendar className="w-3 h-3 mr-1" />
+          <span>20h-21h</span>
+         </>
+        )}
+       </Button>
+      </CardContent>
+     </Card>
+
+     {/* Fifth booking card */}
+     <Card className="shadow-lg bg-white">
+      <CardHeader className="text-center p-2">
+       <div
+        className="mx-auto w-12 h-12 rounded-full flex items-center justify-center mb-1"
+        style={{ backgroundColor: "#75BDE0" }}
+       >
+        <Calendar className="w-6 h-6 text-white" />
+       </div>
+       <CardTitle className="text-lg font-bold text-gray-800">S1.02</CardTitle>
+      </CardHeader>
+
+      <CardContent className="space-y-1 px-4 py-2">
+       <Button
+        onClick={handleBookingS5}
+        disabled={isBookingS5 || !isLoggedIn}
+        className="w-full text-white font-semibold py-4 text-sm rounded-lg transition-all duration-200"
+        style={{ backgroundColor: "#3B7097" }}
+        onMouseEnter={(e) => {
+         if (!isBookingS5) {
+          (e.target as HTMLButtonElement).style.backgroundColor = "#75BDE0";
+         }
+        }}
+        onMouseLeave={(e) => {
+         if (!isBookingS5) {
+          (e.target as HTMLButtonElement).style.backgroundColor = "#3B7097";
+         }
+        }}
+        size="default"
+       >
+        {isBookingS5 ? (
+         <>
+          <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+          <span className="text-xs">Booking...</span>
+         </>
+        ) : (
+         <>
+          <Calendar className="w-3 h-3 mr-1" />
+          <span>20h-21h</span>
          </>
         )}
        </Button>
