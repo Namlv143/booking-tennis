@@ -87,10 +87,10 @@ export async function POST(req: any) {
 }),  headers: {
    "user-agent": "Dart/3.7 (dart:io)",
    "app-version-name": "1.5.5",
-   "device-inf": "PHY110 OPPO 35",
+   "device-inf": isHardcoded ? "Pixel 6 Google 35" : "PHY110 OPPO 35",
    "accept-language": "vi",
    "x-vinhome-token": isHardcoded ? hardcodedToken : jwtToken,
-   "device-id": "51a9e0d3fcb8574c",
+   "device-id": isHardcoded ? "d4cecbf3a4df9517" : "51a9e0d3fcb8574c",
    host: "vh.vinhomes.vn",
    "content-type": "application/json; charset=UTF-8",
    "accept-encoding": "gzip, deflate, br",
