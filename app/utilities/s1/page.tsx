@@ -518,7 +518,7 @@ export default function TennisBookingPage() {
        >
         <Calendar className="w-6 h-6 text-white" />
        </div>
-       <CardTitle className="text-lg font-bold text-gray-800">S1.02</CardTitle>
+       <CardTitle className="text-lg font-bold text-gray-800">S1.01</CardTitle>
       </CardHeader>
 
       <CardContent className="space-y-1 px-4 py-2">
