@@ -33,7 +33,7 @@ export default function UtilitiesPage() {
   // Redirect if not logged in
   useEffect(() => {
     if (!isLoading && !isLoggedIn) {
-      router.push("/login")
+      router.push("/")
     }
   }, [isLoading, isLoggedIn, router])
 

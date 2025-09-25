@@ -13,7 +13,8 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, Calendar, LogOut, UserRoundCheck } from "lucide-react";
 import { useUser } from "@/contexts/UserContext";
-
+import { bookTennisClient, SECRET_KEY } from "@/lib/vinhomes-api";
+import crypto from "crypto"
 const getBookingDate = (): number => {
  const now = Date.now();
  // Get current date and adjust to Vietnam time (UTC+7)
@@ -57,13 +58,6 @@ export default function TennisBookingPage() {
  // Use context for user state
  const { isLoggedIn, currentToken, userData, isLoading, logout } = useUser();
 
- // Redirect if not logged in
- useEffect(() => {
-  if (!isLoading && !isLoggedIn) {
-   router.push("/login");
-  }
- }, [isLoading, isLoggedIn, router]);
-
  const handleLogout = () => {
   logout();
   setBookingResultS1(null);
@@ -72,44 +66,34 @@ export default function TennisBookingPage() {
   setBookingResultS4(null);
   setBookingResultS5(null);
  };
+ const generateChecksum = (utilityId: number, placeId: number, bookingDate: number, timeConstraintId: number) => {
+  const numericSum =
+    utilityId +
+    placeId +
+    bookingDate +
+    timeConstraintId
+  const interpolatedString = `${numericSum}${SECRET_KEY}`
+  const checksum = crypto.createHash('sha256').update(interpolatedString, 'utf-8').digest('hex');
+  return checksum
+}
+
  const handleBookingS1 = async () => {
   setIsBookingS1(true); // Bắt đầu loading, vô hiệu hóa nút
   setBookingResultS1(null);
 
-  try {
-   // Gọi đến API route của bạn bằng phương thức POST
-   const response = await fetch("/api/tennis", {
-    method: "POST",
-    headers: {
-     "Content-Type": "application/json",
-    },
-    cache: "no-store" as RequestCache,
-    keepalive: true,
-    body: JSON.stringify({
-     jwtToken: currentToken,
-     bookingDate,
-     fromTime,
-     bookingTarget: {
-      placeId: 801,
-      placeUtilityId: 625,
-      timeConstraintId: 571,
-      classifyId: 118,
-     },
-    }),
-   });
-
-   // Lấy kết quả JSON từ phản hồi
-   const result = await response.json();
-   console.log("result", JSON.stringify(result));
-   // Nếu thành công
-   setBookingResultS1(result);
-  } catch (error) {
-   // Nếu có lỗi trong quá trình gọi API
-   setBookingResultS1(error);
-  } finally {
-   // Dù thành công hay thất bại, cũng dừng loading
-   setIsBookingS1(false);
-  }
+  const result = await bookTennisClient({
+   jwtToken: currentToken,
+   bookingDate,
+   bookingTarget: {
+    placeId: 801,
+    placeUtilityId: 625,
+    timeConstraintId: 571,
+    classifyId: 118,
+   },
+   cs: generateChecksum(75, 801, bookingDate, 571)
+  });
+  setBookingResultS1(result);
+  setIsBookingS1(false);
  };
 
  const handleBookingS2 = async () => {
@@ -117,27 +101,17 @@ export default function TennisBookingPage() {
   setBookingResultS2(null);
 
   try {
-   const response = await fetch("/api/tennis", {
-    method: "POST",
-    headers: {
-     "Content-Type": "application/json",
+   const result = await bookTennisClient({
+    jwtToken: currentToken,
+    bookingDate,
+    bookingTarget: {
+     placeId: 801,
+     placeUtilityId: 625,
+     timeConstraintId: 575,
+     classifyId: 118,
     },
-    cache: "no-store" as RequestCache,
-    keepalive: true,
-    body: JSON.stringify({
-     jwtToken: currentToken,
-     bookingDate,
-     fromTime,
-     bookingTarget: {
-      placeId: 801,
-      placeUtilityId: 625,
-      timeConstraintId: 575,
-      classifyId: 118,
-     },
-    }),
+    cs: generateChecksum(75, 801, bookingDate, 575)
    });
-
-   const result = await response.json();
    console.log("result", JSON.stringify(result));
    setBookingResultS2(result);
   } catch (error) {
@@ -152,27 +126,17 @@ export default function TennisBookingPage() {
   setBookingResultS3(null);
 
   try {
-   const response = await fetch("/api/tennis", {
-    method: "POST",
-    headers: {
-     "Content-Type": "application/json",
+   const result = await bookTennisClient({
+    jwtToken: currentToken,
+    bookingDate,
+    bookingTarget: {
+     placeId: 802,
+     placeUtilityId: 626,
+     timeConstraintId: 575,
+     classifyId: 118,
     },
-    cache: "no-store" as RequestCache,
-    keepalive: true,
-    body: JSON.stringify({
-     jwtToken: currentToken,
-     bookingDate,
-     fromTime,
-     bookingTarget: {
-      placeId: 802,
-      placeUtilityId: 626,
-      timeConstraintId: 575,
-      classifyId: 118,
-     },
-    }),
+    cs: generateChecksum(75, 802, bookingDate, 575)
    });
-
-   const result = await response.json();
    console.log("result", JSON.stringify(result));
    setBookingResultS3(result);
   } catch (error) {
@@ -187,27 +151,17 @@ export default function TennisBookingPage() {
   setBookingResultS4(null);
 
   try {
-   const response = await fetch("/api/tennis", {
-    method: "POST",
-    headers: {
-     "Content-Type": "application/json",
+   const result = await bookTennisClient({
+    jwtToken: currentToken,
+    bookingDate,
+    bookingTarget: {
+     placeId: 801,
+     placeUtilityId: 625,
+     timeConstraintId: 576,
+     classifyId: 118,
     },
-    cache: "no-store" as RequestCache,
-    keepalive: true,
-    body: JSON.stringify({
-     jwtToken: currentToken,
-     bookingDate,
-     fromTime,
-     bookingTarget: {
-      placeId: 801,
-      placeUtilityId: 625,
-      timeConstraintId: 576,
-      classifyId: 118,
-     },
-    }),
+    cs: generateChecksum(75, 801, bookingDate, 576)
    });
-
-   const result = await response.json();
    console.log("result", JSON.stringify(result));
    setBookingResultS4(result);
   } catch (error) {
@@ -222,27 +176,17 @@ export default function TennisBookingPage() {
   setBookingResultS5(null);
 
   try {
-   const response = await fetch("/api/tennis", {
-    method: "POST",
-    headers: {
-     "Content-Type": "application/json",
+   const result = await bookTennisClient({
+    jwtToken: currentToken,
+    bookingDate,
+    bookingTarget: {
+     placeId: 802,
+     placeUtilityId: 626,
+     timeConstraintId: 576,
+     classifyId: 118,
     },
-    cache: "no-store" as RequestCache,
-    keepalive: true,
-    body: JSON.stringify({
-     jwtToken: currentToken,
-     bookingDate,
-     fromTime,
-     bookingTarget: {
-      placeId: 802,
-      placeUtilityId: 626,
-      timeConstraintId: 576,
-      classifyId: 118,
-     },
-    }),
+    cs: generateChecksum(75, 802, bookingDate, 576)
    });
-
-   const result = await response.json();
    console.log("result", JSON.stringify(result));
    setBookingResultS5(result);
   } catch (error) {
@@ -284,7 +228,7 @@ export default function TennisBookingPage() {
       <div className="flex items-center gap-2">
        <UserRoundCheck className="w-8 h-8" style={{ color: "#3B7097" }} />
        <p className="text-xl font-bold" style={{ color: "#3B7097" }}>
-        {userData?.data?.fullName || "User"}!
+        {userData?.fullName || "User"}!
        </p>
       </div>
       <Button
