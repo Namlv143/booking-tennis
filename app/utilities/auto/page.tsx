@@ -182,7 +182,7 @@ export default function TennisBookingPage() {
   }
  };
 
- const handleBookingS4 = async () => {
+ const handleBookingS4 = async (isHardcoded: boolean = false) => {
   setIsBookingS4(true);
   setBookingResultS4(null);
 
@@ -204,6 +204,7 @@ export default function TennisBookingPage() {
       timeConstraintId: 576,
       classifyId: 118,
      },
+     isHardcoded
     }),
    });
 
@@ -217,7 +218,7 @@ export default function TennisBookingPage() {
   }
  };
 
- const handleBookingS5 = async () => {
+ const handleBookingS5 = async (isHardcoded: boolean = false) => {
   setIsBookingS5(true);
   setBookingResultS5(null);
 
@@ -250,6 +251,22 @@ export default function TennisBookingPage() {
   } finally {
    setIsBookingS5(false);
   }
+ };
+
+ const handleBookingS2AndS4 = async () => {
+  // Trigger both S2 and S4 bookings simultaneously
+  await Promise.all([
+   handleBookingS2(),
+   handleBookingS4(true)
+  ]);
+ };
+
+ const handleBookingS3AndS5 = async () => {
+  // Trigger both S3 and S5 bookings simultaneously
+  await Promise.all([
+   handleBookingS3(),
+   handleBookingS5(true)
+  ]);
  };
  if (isLoading) {
   return (
@@ -313,6 +330,72 @@ export default function TennisBookingPage() {
     <CardDescription className="mb-4 mt-2">
      Click on the buttons below to book tennis courts.
     </CardDescription>
+    
+    {/* Simultaneous Booking Button */}
+    <div className="mb-6">
+     <Button
+      onClick={handleBookingS2AndS4}
+      disabled={(isBookingS2 || isBookingS4) || !isLoggedIn}
+      className="w-full text-white font-semibold py-4 text-sm rounded-lg transition-all duration-200"
+      style={{ backgroundColor: "#3B7097" }}
+      onMouseEnter={(e) => {
+       if (!(isBookingS2 || isBookingS4)) {
+        (e.target as HTMLButtonElement).style.backgroundColor = "#75BDE0";
+       }
+      }}
+      onMouseLeave={(e) => {
+       if (!(isBookingS2 || isBookingS4)) {
+        (e.target as HTMLButtonElement).style.backgroundColor = "#3B7097";
+       }
+      }}
+      size="default"
+     >
+      {(isBookingS2 || isBookingS4) ? (
+       <>
+        <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+        <span className="text-xs">Booking...</span>
+       </>
+      ) : (
+       <>
+        <Calendar className="w-3 h-3 mr-1" />
+        <span>S1.01 18-21h</span>
+       </>
+      )}
+     </Button>
+    </div>
+
+    {/* Simultaneous Booking Button for S3 & S5 */}
+    <div className="mb-6">
+     <Button
+      onClick={handleBookingS3AndS5}
+      disabled={(isBookingS3 || isBookingS5) || !isLoggedIn}
+      className="w-full text-white font-semibold py-4 text-sm rounded-lg transition-all duration-200"
+      style={{ backgroundColor: "#3B7097" }}
+      onMouseEnter={(e) => {
+       if (!(isBookingS3 || isBookingS5)) {
+        (e.target as HTMLButtonElement).style.backgroundColor = "#75BDE0";
+       }
+      }}
+      onMouseLeave={(e) => {
+       if (!(isBookingS3 || isBookingS5)) {
+        (e.target as HTMLButtonElement).style.backgroundColor = "#3B7097";
+       }
+      }}
+      size="default"
+     >
+      {(isBookingS3 || isBookingS5) ? (
+       <>
+        <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+        <span className="text-xs">Booking...</span>
+       </>
+      ) : (
+       <>
+        <Calendar className="w-3 h-3 mr-1" />
+        <span>S1.02 18-21h</span>
+       </>
+      )}
+     </Button>
+    </div>
      {bookingResultS1 && (
       <Alert
        className={
@@ -568,7 +651,7 @@ export default function TennisBookingPage() {
 
       <CardContent className="space-y-1 px-4 py-2">
        <Button
-        onClick={handleBookingS4}
+        onClick={() => handleBookingS4(false)}
         disabled={isBookingS4 || !isLoggedIn}
         className="w-full text-white font-semibold py-4 text-sm rounded-lg transition-all duration-200"
         style={{ backgroundColor: "#3B7097" }}
@@ -613,7 +696,7 @@ export default function TennisBookingPage() {
 
       <CardContent className="space-y-1 px-4 py-2">
        <Button
-        onClick={handleBookingS5}
+        onClick={() => handleBookingS5(false)}
         disabled={isBookingS5 || !isLoggedIn}
         className="w-full text-white font-semibold py-4 text-sm rounded-lg transition-all duration-200"
         style={{ backgroundColor: "#3B7097" }}

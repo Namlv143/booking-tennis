@@ -1,7 +1,9 @@
 "use client"
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react'
-import { getUserMe } from '@/lib/vinhomes-api'
+import { useRouter } from 'next/navigation'
+import { Loader2 } from 'lucide-react'
+import { TokenService } from '@/lib/token-service'
 
 // User data types
 interface UserData {
@@ -43,7 +45,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
   // Helper function to clear all data and redirect to login
   const clearAllAndRedirectToLogin = () => {
-    localStorage.removeItem('vinhomes_tokens')
+    console.error("Clearing all tokens and redirecting to login due to invalid token")
+    TokenService.clearAllTokens()
     setCurrentToken(null)
     setIsLoggedIn(false)
     setUserData(null)
@@ -52,7 +55,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
     // Clear any other potential storage
     if (typeof window !== 'undefined') {
       // Redirect to login
-      window.location.href = '/'
+      window.location.href = '/login'
     }
   }
 
@@ -61,16 +64,25 @@ export function UserProvider({ children }: { children: ReactNode }) {
     const initializeUser = async () => {
       try {
         // Check for any existing token
+        const allTokens = TokenService.getAllTokens()
+        const usernames = Object.keys(allTokens)
         
-        const validToken = JSON.parse(localStorage.getItem('vinhomes_tokens') || 'null')
+        // Find the first valid token
+        let validToken = null
+        for (const username of usernames) {
+          const token = TokenService.getToken(username)
+          if (token) {
+            validToken = token
+            break
+          }
+        }
+        
         if (validToken) {
-          console.log("validToken", validToken)
           setCurrentToken(validToken)
           setIsLoggedIn(true)
           
           // Load user data (will handle 401 errors internally)
           await loadUserData(validToken)
-          
         }
       } catch (error) {
         console.error("Failed to initialize user:", error)
@@ -85,11 +97,19 @@ export function UserProvider({ children }: { children: ReactNode }) {
   // Load user data from API
   const loadUserData = async (token: string) => {
     try {
-      const userMeResponse = await getUserMe(token)
+      const userMeResponse = await fetch("/api/user-me", {
+        method: "POST", 
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token }),
+      })
       console.log("userMeResponse", userMeResponse)
-      if (userMeResponse.data) {
-        setUserData(userMeResponse.data?.data)
-      } else if (userMeResponse.error) {
+      if (userMeResponse.ok) {
+        const userMeResult = await userMeResponse.json()
+        if (userMeResult.data) {
+          setUserData(userMeResult.data)
+        }
+      } else if (userMeResponse.status === 400 || userMeResponse.ok === false) {
+        // Token is invalid/expired, clear all tokens and redirect to login
         clearAllAndRedirectToLogin()
       }
     } catch (error) {
@@ -101,7 +121,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const login = (token: string, userData: UserData, username?: string) => {
     // Store token if username is provided
     if (username) {
-      localStorage.setItem('vinhomes_tokens', JSON.stringify(token))
+      TokenService.storeToken(username, token)
     }
     
     setCurrentToken(token)
@@ -167,8 +187,32 @@ export function useUser() {
 }
 
 // Higher-order component for protected routes
-export function withAuth(Component: React.ComponentType<any>) {
-  
-    return <Component />
-  
+export function withAuth<P extends object>(Component: React.ComponentType<P>) {
+  return function AuthenticatedComponent(props: P) {
+    const { isLoggedIn, isLoading } = useUser()
+    const router = useRouter()
+
+    useEffect(() => {
+      if (!isLoading && !isLoggedIn) {
+        router.push('/login')
+      }
+    }, [isLoggedIn, isLoading, router])
+
+    if (isLoading) {
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-orange-50 to-orange-100 flex items-center justify-center">
+          <div className="text-center">
+            <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
+            <p>Loading...</p>
+          </div>
+        </div>
+      )
+    }
+
+    if (!isLoggedIn) {
+      return null
+    }
+
+    return <Component {...props} />
+  }
 }
