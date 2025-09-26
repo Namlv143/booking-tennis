@@ -182,17 +182,6 @@ class VinhomesTennisBookingClient {
       // Add timestamp to prevent replay attacks
       modifiedBookingData.timestamp = Date.now();
       
-      // Add fingerprint data that might be used for bot detection
-      modifiedBookingData.fingerprint = {
-        screenWidth: 1080,
-        screenHeight: 2400,
-        deviceMemory: 8,
-        hardwareConcurrency: 8,
-        timezone: "Asia/Ho_Chi_Minh",
-        language: "vi-VN",
-        userAgent: 'Mozilla/5.0 (Linux; Android 14; SM-G998B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36'
-      };
-      
       // Get the first booking request
       const firstRequest = modifiedBookingData.bookingRequests[0];
       
@@ -238,9 +227,6 @@ class VinhomesTennisBookingClient {
         .update(message)
         .digest('base64');
       headers['x-signature'] = signature;
-      
-      // Add random request ID to mimic app behavior
-      headers['x-request-id'] = crypto.randomUUID();
       
       // Make the modified booking request
       const url = `${this.baseUrl}/utility/v0/customer-utility/booking`;
