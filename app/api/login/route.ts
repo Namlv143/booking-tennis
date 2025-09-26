@@ -237,13 +237,8 @@ class VinhomesLoginService {
       console.log("Login successful, calling additional APIs...")
 
       // Call all three APIs in parallel for better performance
-      const [editorConfig, userMe] = await Promise.all([
-        this.callEditorConfig(token),
-        this.callUserMe(token),
-      ])
-
+      const userMe= await this.callUserMe(token)
       // Add results to login response
-      loginResult.editorConfig = editorConfig
       loginResult.userMe = userMe
       
     }

@@ -77,16 +77,11 @@ export default function TennisBookingPage() {
   setBookingResultS1(null);
 
   try {
-   // Generate unique session ID for this specific booking attempt
-   const sessionId = `s1_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
-   console.log(`[Frontend] Starting S1 booking with session: ${sessionId}`);
-   
    // Gọi đến API route của bạn bằng phương thức POST
    const response = await fetch("/api/tennis", {
     method: "POST",
     headers: {
      "Content-Type": "application/json",
-     "X-Session-ID": sessionId, // Add session identifier header
     },
     cache: "no-store" as RequestCache,
     keepalive: true,
@@ -100,13 +95,12 @@ export default function TennisBookingPage() {
       timeConstraintId: 571,
       classifyId: 118,
      },
-     sessionId: sessionId, // Include session ID in body
-     isHardcoded: false,
     }),
    });
 
    // Lấy kết quả JSON từ phản hồi
    const result = await response.json();
+   console.log("result", JSON.stringify(result));
    // Nếu thành công
    setBookingResultS1(result);
   } catch (error) {
@@ -123,16 +117,10 @@ export default function TennisBookingPage() {
   setBookingResultS2(null);
 
   try {
-   // Generate unique session ID for this specific booking attempt
-   const sessionId = `s2_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
-   console.log(`[Frontend] Starting S2 booking with session: ${sessionId}`);
-   
-   // Gọi đến API route của bạn bằng phương thức POST
    const response = await fetch("/api/tennis", {
     method: "POST",
     headers: {
      "Content-Type": "application/json",
-     "X-Session-ID": sessionId, // Add session identifier header
     },
     cache: "no-store" as RequestCache,
     keepalive: true,
@@ -146,12 +134,11 @@ export default function TennisBookingPage() {
       timeConstraintId: 575,
       classifyId: 118,
      },
-     sessionId: sessionId, // Include session ID in body
-     isHardcoded: false,
     }),
    });
 
    const result = await response.json();
+   console.log("result", JSON.stringify(result));
    setBookingResultS2(result);
   } catch (error) {
    setBookingResultS2(error);
@@ -165,15 +152,10 @@ export default function TennisBookingPage() {
   setBookingResultS3(null);
 
   try {
-   // Generate unique session ID for this specific booking attempt
-   const sessionId = `s3_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
-   console.log(`[Frontend] Starting S3 booking with session: ${sessionId}`);
-   
    const response = await fetch("/api/tennis", {
     method: "POST",
     headers: {
      "Content-Type": "application/json",
-     "X-Session-ID": sessionId, // Add session identifier header
     },
     cache: "no-store" as RequestCache,
     keepalive: true,
@@ -187,8 +169,6 @@ export default function TennisBookingPage() {
       timeConstraintId: 575,
       classifyId: 118,
      },
-     sessionId: sessionId, // Include session ID in body
-     isHardcoded: false,
     }),
    });
 
@@ -202,20 +182,15 @@ export default function TennisBookingPage() {
   }
  };
 
- const handleBookingS4 = async () => {
+ const handleBookingS4 = async (isHardcoded: boolean = false) => {
   setIsBookingS4(true);
   setBookingResultS4(null);
 
   try {
-   // Generate unique session ID for this specific booking attempt
-   const sessionId = `s4_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
-   console.log(`[Frontend] Starting S4 booking with session: ${sessionId}`);
-   
    const response = await fetch("/api/tennis", {
     method: "POST",
     headers: {
      "Content-Type": "application/json",
-     "X-Session-ID": sessionId, // Add session identifier header
     },
     cache: "no-store" as RequestCache,
     keepalive: true,
@@ -229,8 +204,7 @@ export default function TennisBookingPage() {
       timeConstraintId: 576,
       classifyId: 118,
      },
-     sessionId: sessionId, // Include session ID in body
-     isHardcoded: false,
+     isHardcoded
     }),
    });
 
@@ -244,20 +218,15 @@ export default function TennisBookingPage() {
   }
  };
 
- const handleBookingS5 = async () => {
+ const handleBookingS5 = async (isHardcoded: boolean = false) => {
   setIsBookingS5(true);
   setBookingResultS5(null);
 
   try {
-   // Generate unique session ID for this specific booking attempt
-   const sessionId = `s5_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
-   console.log(`[Frontend] Starting S5 booking with session: ${sessionId}`);
-   
    const response = await fetch("/api/tennis", {
     method: "POST",
     headers: {
      "Content-Type": "application/json",
-     "X-Session-ID": sessionId, // Add session identifier header
     },
     cache: "no-store" as RequestCache,
     keepalive: true,
@@ -271,8 +240,6 @@ export default function TennisBookingPage() {
       timeConstraintId: 576,
       classifyId: 118,
      },
-     sessionId: sessionId, // Include session ID in body
-     isHardcoded: false,
     }),
    });
 
@@ -284,6 +251,22 @@ export default function TennisBookingPage() {
   } finally {
    setIsBookingS5(false);
   }
+ };
+
+ const handleBookingS2AndS4 = async () => {
+  // Trigger both S2 and S4 bookings simultaneously
+  await Promise.all([
+   handleBookingS2(),
+   handleBookingS4(true)
+  ]);
+ };
+
+ const handleBookingS3AndS5 = async () => {
+  // Trigger both S3 and S5 bookings simultaneously
+  await Promise.all([
+   handleBookingS3(),
+   handleBookingS5(true)
+  ]);
  };
  if (isLoading) {
   return (
@@ -347,111 +330,177 @@ export default function TennisBookingPage() {
     <CardDescription className="mb-4 mt-2">
      Click on the buttons below to book tennis courts.
     </CardDescription>
-    {bookingResultS1 && (
-     <Alert
-      className={
-       bookingResultS1.success
-        ? "border-green-200 bg-green-50 mt-2"
-        : "border-red-200 bg-red-50 mt-2"
-      }
-      autoClose={true}
-      onClose={() => setBookingResultS1(null)}
+    
+    {/* Simultaneous Booking Button */}
+    <div className="mb-6">
+     <Button
+      onClick={handleBookingS2AndS4}
+      disabled={(isBookingS2 || isBookingS4) || !isLoggedIn}
+      className="w-full text-white font-semibold py-4 text-sm rounded-lg transition-all duration-200"
+      style={{ backgroundColor: "#3B7097" }}
+      onMouseEnter={(e) => {
+       if (!(isBookingS2 || isBookingS4)) {
+        (e.target as HTMLButtonElement).style.backgroundColor = "#75BDE0";
+       }
+      }}
+      onMouseLeave={(e) => {
+       if (!(isBookingS2 || isBookingS4)) {
+        (e.target as HTMLButtonElement).style.backgroundColor = "#3B7097";
+       }
+      }}
+      size="default"
      >
-      <AlertDescription
-       className={bookingResultS1.success ? "text-green-800" : "text-red-800"}
-      >
-       <div className="text-xs">
-        {bookingResultS1?.success
-         ? "Booking successful"
-         : bookingResultS1?.error?.message}
-       </div>
-      </AlertDescription>
-     </Alert>
-    )}
-    {bookingResultS2 && (
-     <Alert
-      className={
-       bookingResultS2.success
-        ? "border-green-200 bg-green-50 mt-2"
-        : "border-red-200 bg-red-50 mt-2"
-      }
-      autoClose={true}
-      onClose={() => setBookingResultS2(null)}
+      {(isBookingS2 || isBookingS4) ? (
+       <>
+        <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+        <span className="text-xs">Booking...</span>
+       </>
+      ) : (
+       <>
+        <Calendar className="w-3 h-3 mr-1" />
+        <span>S1.01 18-21h</span>
+       </>
+      )}
+     </Button>
+    </div>
+
+    {/* Simultaneous Booking Button for S3 & S5 */}
+    <div className="mb-6">
+     <Button
+      onClick={handleBookingS3AndS5}
+      disabled={(isBookingS3 || isBookingS5) || !isLoggedIn}
+      className="w-full text-white font-semibold py-4 text-sm rounded-lg transition-all duration-200"
+      style={{ backgroundColor: "#3B7097" }}
+      onMouseEnter={(e) => {
+       if (!(isBookingS3 || isBookingS5)) {
+        (e.target as HTMLButtonElement).style.backgroundColor = "#75BDE0";
+       }
+      }}
+      onMouseLeave={(e) => {
+       if (!(isBookingS3 || isBookingS5)) {
+        (e.target as HTMLButtonElement).style.backgroundColor = "#3B7097";
+       }
+      }}
+      size="default"
      >
-      <AlertDescription
-       className={bookingResultS2.success ? "text-green-800" : "text-red-800"}
+      {(isBookingS3 || isBookingS5) ? (
+       <>
+        <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+        <span className="text-xs">Booking...</span>
+       </>
+      ) : (
+       <>
+        <Calendar className="w-3 h-3 mr-1" />
+        <span>S1.02 18-21h</span>
+       </>
+      )}
+     </Button>
+    </div>
+     {bookingResultS1 && (
+      <Alert
+       className={
+        bookingResultS1.success
+         ? "border-green-200 bg-green-50 mt-2"
+         : "border-red-200 bg-red-50 mt-2"
+       }
+       autoClose={true}
+       onClose={() => setBookingResultS1(null)}
       >
-       <div className="text-xs">
-        {bookingResultS2?.success
-         ? "Booking successful"
-         : bookingResultS2?.error?.message}
-       </div>
-      </AlertDescription>
-     </Alert>
-    )}
-    {bookingResultS3 && (
-     <Alert
-      className={
-       bookingResultS3.success
-        ? "border-green-200 bg-green-50 mt-2"
-        : "border-red-200 bg-red-50 mt-2"
-      }
-      autoClose={true}
-      onClose={() => setBookingResultS3(null)}
-     >
-      <AlertDescription
-       className={bookingResultS3.success ? "text-green-800" : "text-red-800"}
+       <AlertDescription
+        className={bookingResultS1.success ? "text-green-800" : "text-red-800"}
+       >
+        <div className="text-xs">
+         {bookingResultS1?.success
+          ? "Booking successful"
+          : bookingResultS1?.error?.message}
+        </div>
+       </AlertDescription>
+      </Alert>
+     )}
+     {bookingResultS2 && (
+      <Alert
+       className={
+        bookingResultS2.success
+         ? "border-green-200 bg-green-50 mt-2"
+         : "border-red-200 bg-red-50 mt-2"
+       }
+       autoClose={true}
+       onClose={() => setBookingResultS2(null)}
       >
-       <div className="text-xs">
-        {bookingResultS3?.success
-         ? "Booking successful"
-         : bookingResultS3?.error?.message}
-       </div>
-      </AlertDescription>
-     </Alert>
-    )}
-    {bookingResultS4 && (
-     <Alert
-      className={
-       bookingResultS4.success
-        ? "border-green-200 bg-green-50 mt-2"
-        : "border-red-200 bg-red-50 mt-2"
-      }
-      autoClose={true}
-      onClose={() => setBookingResultS4(null)}
-     >
-      <AlertDescription
-       className={bookingResultS4.success ? "text-green-800" : "text-red-800"}
+       <AlertDescription
+        className={bookingResultS2.success ? "text-green-800" : "text-red-800"}
+       >
+        <div className="text-xs">
+         {bookingResultS2?.success
+          ? "Booking successful"
+          : bookingResultS2?.error?.message}
+        </div>
+       </AlertDescription>
+      </Alert>
+     )}
+     {bookingResultS3 && (
+      <Alert
+       className={
+        bookingResultS3.success
+         ? "border-green-200 bg-green-50 mt-2"
+         : "border-red-200 bg-red-50 mt-2"
+       }
+       autoClose={true}
+       onClose={() => setBookingResultS3(null)}
       >
-       <div className="text-xs">
-        {bookingResultS4?.success
-         ? "Booking successful"
-         : bookingResultS4?.error?.message}
-       </div>
-      </AlertDescription>
-     </Alert>
-    )}
-    {bookingResultS5 && (
-     <Alert
-      className={
-       bookingResultS5.success
-        ? "border-green-200 bg-green-50 mt-2"
-        : "border-red-200 bg-red-50 mt-2"
-      }
-      autoClose={true}
-      onClose={() => setBookingResultS5(null)}
-     >
-      <AlertDescription
-       className={bookingResultS5.success ? "text-green-800" : "text-red-800"}
+       <AlertDescription
+        className={bookingResultS3.success ? "text-green-800" : "text-red-800"}
+       >
+        <div className="text-xs">
+         {bookingResultS3?.success
+          ? "Booking successful"
+          : bookingResultS3?.error?.message}
+        </div>
+       </AlertDescription>
+      </Alert>
+     )}
+     {bookingResultS4 && (
+      <Alert
+       className={
+        bookingResultS4.success
+         ? "border-green-200 bg-green-50 mt-2"
+         : "border-red-200 bg-red-50 mt-2"
+       }
+       autoClose={true}
+       onClose={() => setBookingResultS4(null)}
       >
-       <div className="text-xs">
-        {bookingResultS5?.success
-         ? "Booking successful"
-         : bookingResultS5?.error?.message}
-       </div>
-      </AlertDescription>
-     </Alert>
-    )}
+       <AlertDescription
+        className={bookingResultS4.success ? "text-green-800" : "text-red-800"}
+       >
+        <div className="text-xs">
+         {bookingResultS4?.success
+          ? "Booking successful"
+          : bookingResultS4?.error?.message}
+        </div>
+       </AlertDescription>
+      </Alert>
+     )}
+     {bookingResultS5 && (
+      <Alert
+       className={
+        bookingResultS5.success
+         ? "border-green-200 bg-green-50 mt-2"
+         : "border-red-200 bg-red-50 mt-2"
+       }
+       autoClose={true}
+       onClose={() => setBookingResultS5(null)}
+      >
+       <AlertDescription
+        className={bookingResultS5.success ? "text-green-800" : "text-red-800"}
+       >
+        <div className="text-xs">
+         {bookingResultS5?.success
+          ? "Booking successful"
+          : bookingResultS5?.error?.message}
+        </div>
+       </AlertDescription>
+      </Alert>
+     )}
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4 mt-2">
      {/* First booking card - Testing tennis-booking */}
      <Card className="shadow-lg bg-white">
@@ -602,7 +651,7 @@ export default function TennisBookingPage() {
 
       <CardContent className="space-y-1 px-4 py-2">
        <Button
-        onClick={handleBookingS4}
+        onClick={() => handleBookingS4(false)}
         disabled={isBookingS4 || !isLoggedIn}
         className="w-full text-white font-semibold py-4 text-sm rounded-lg transition-all duration-200"
         style={{ backgroundColor: "#3B7097" }}
@@ -647,7 +696,7 @@ export default function TennisBookingPage() {
 
       <CardContent className="space-y-1 px-4 py-2">
        <Button
-        onClick={handleBookingS5}
+        onClick={() => handleBookingS5(false)}
         disabled={isBookingS5 || !isLoggedIn}
         className="w-full text-white font-semibold py-4 text-sm rounded-lg transition-all duration-200"
         style={{ backgroundColor: "#3B7097" }}
