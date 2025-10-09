@@ -3,7 +3,7 @@
   "buildCommand": "pnpm run build",
   "installCommand": "pnpm install",
   "outputDirectory": ".next",
-  "regions": ["sin1"],
+  "regions": ["hkg1"],
   "functions": {
     "app/api/**/*.ts": {
       "maxDuration": 300,

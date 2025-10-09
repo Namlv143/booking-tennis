@@ -41,7 +41,7 @@ const DEFAULT_PLACE_ID = 801
 const DEFAULT_PLACE_UTILITY_ID = 625
 const DEFAULT_TIME_CONSTRAINT_ID = 575
 
-// Ultra-fast headers with client-provided JWT token
+// Ultra-fast headers with geographic hints for production
 function getHeaders(method: string = 'GET', jwtToken: string): Record<string, string> {
   const headers: Record<string, string> = {
     'user-agent': 'Dart/3.7 (dart:io)',
@@ -51,7 +51,11 @@ function getHeaders(method: string = 'GET', jwtToken: string): Record<string, st
     'device-id': '51a9e0d3fcb8574c',
     'host': 'vh.vinhomes.vn',
     'content-type': 'application/json; charset=UTF-8',
-    'x-vinhome-token': jwtToken
+    'x-vinhome-token': jwtToken,
+    // Geographic hints for production security bypass
+    'x-forwarded-for': '203.113.191.46', // Vietnam IP sample
+    'cf-ipcountry': 'VN',
+    'accept': 'application/json, text/plain, */*'
   }
 
   if (method === 'POST') {
