@@ -231,16 +231,18 @@ async function executeBookingFlow(jwtToken: string, bookingParams?: { placeId: n
 
     // Sequential execution for ticket info
     const ticketInfoResult = await getTicketInfo(bookingDate, placeUtilityId, timeConstraintId, jwtToken)
+    console.log("ticketInfoResult", ticketInfoResult)
     if (ticketInfoResult.error) {
       return { error: "Step 4 (get_ticket_info) failed", data: ticketInfoResult }
     }
 
     // Make final booking
     const bookingResult = await makeBooking(bookingDate, placeId, timeConstraintId, jwtToken)
-    
+    console.log("bookingResult", bookingResult)
     return bookingResult
 
   } catch (error) {
+    console.log("error", error)
     return { error: String(error), success: false }
   }
 }
