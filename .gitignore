@@ -19,6 +19,9 @@ yarn-error.log*
 # env files
 .env*
 
+# server token storage
+.server-token
+
 # vercel
 .vercel
 

@@ -1,61 +1,150 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
  Card,
  CardContent,
- CardDescription,
  CardHeader,
  CardTitle,
 } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, Calendar, LogOut, UserRoundCheck } from "lucide-react";
+import { Dropdown } from "@/components/ui/dropdown";
+import { Loader2, Calendar, LogOut, UserRoundCheck, Zap, Clock, Play, Pause } from "lucide-react";
 import { useUser } from "@/contexts/UserContext";
+import { useTennisBooking } from "@/hooks/useTennisBooking";
 
-const getBookingDate = (): number => {
- const now = Date.now();
- // Get current date and adjust to Vietnam time (UTC+7)
- const vietnamTime = new Date(now + 7 * 60 * 60 * 1000);
-
- // Get tomorrow's date
- const tomorrow = new Date(vietnamTime);
- tomorrow.setDate(tomorrow.getDate() + 1);
-
- // Set time to 8:30 AM specifically (original design)
- tomorrow.setHours(8, 30, 0, 0);
-
- return tomorrow.getTime();
-};
-
-const generateFromTime = (hour: number, daysToAdd: number): number => {
- const now = Date.now();
- const targetDate = new Date(now);
- targetDate.setDate(targetDate.getDate() + daysToAdd);
- targetDate.setHours(hour, 0, 0, 0);
- return targetDate.getTime();
-};
-
-// Pre-create TextEncoder instance to avoid recreation
+// Court booking options
+const courtOptions = [
+  {
+    label: 'Sân 1: 18h-20h',
+    value: {
+      placeId: 801,
+      placeUtilityId: 625,
+      timeConstraintId: 575,
+    }
+  },
+  {
+    label: 'Sân 2: 18h-20h',
+    value: {
+      placeId: 802,
+      placeUtilityId: 626,
+      timeConstraintId: 575,
+    }
+  },
+  {
+    label: 'Sân 1: 20h-21h',
+    value: {
+      placeId: 801,
+      placeUtilityId: 625,
+      timeConstraintId: 576,
+    }
+  },
+  {
+    label: 'Sân 2: 20h-21h',
+    value: {
+      placeId: 802,
+      placeUtilityId: 626,
+      timeConstraintId: 576,
+    }
+  },
+  {
+    label: 'Sân 1: 08h-10h',
+    value: {
+      placeId: 801,
+      placeUtilityId: 625,
+      timeConstraintId: 570,
+    }
+  },
+  {
+    label: 'Sân 2: 08h-10h',
+    value: {
+      placeId: 802,
+      placeUtilityId: 626,
+      timeConstraintId: 570,
+    }
+  },
+  {
+    label: 'Sân 1: 10h-12h',
+    value: {
+      placeId: 801,
+      placeUtilityId: 625,
+      timeConstraintId: 571,
+    }
+  }
+];
 
 export default function TennisBookingPage() {
- const [isBookingS1, setIsBookingS1] = useState(false);
- const [isBookingS2, setIsBookingS2] = useState(false);
- const [isBookingS3, setIsBookingS3] = useState(false);
- const [isBookingS4, setIsBookingS4] = useState(false);
- const [isBookingS5, setIsBookingS5] = useState(false);
- const [bookingResultS1, setBookingResultS1] = useState<any>(null);
- const [bookingResultS2, setBookingResultS2] = useState<any>(null);
- const [bookingResultS3, setBookingResultS3] = useState<any>(null);
- const [bookingResultS4, setBookingResultS4] = useState<any>(null);
- const [bookingResultS5, setBookingResultS5] = useState<any>(null);
+ // State for UI
+ const [selectedOption, setSelectedOption] = useState(courtOptions[0]); // Default to first option
+ const [responseTime, setResponseTime] = useState<number | null>(null);
  const router = useRouter();
- const bookingDate = getBookingDate();
- const fromTime = generateFromTime(18, 1);
+
+ // Countdown state
+ const [countdownEnabled, setCountdownEnabled] = useState(false);
+ const [timeRemaining, setTimeRemaining] = useState<string>("");
+ const [isTargetTime, setIsTargetTime] = useState(false);
+ const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
  // Use context for user state
  const { isLoggedIn, currentToken, userData, isLoading, logout } = useUser();
+
+ // Use client-side tennis booking (Vietnam IP automatically!)
+ const { bookingState, bookTennis, reset } = useTennisBooking();
+
+ // Calculate time remaining until 15:55:00
+ const calculateTimeRemaining = () => {
+   const now = new Date();
+   const target = new Date();
+   target.setHours(8, 30, 0, 0);
+   
+   // If target time has passed today, set for tomorrow
+   if (now > target) {
+     target.setDate(target.getDate() + 1);
+   }
+   
+   const diff = target.getTime() - now.getTime();
+   
+   if (diff <= 0) {
+     return { timeString: "00:00:00", isTime: true };
+   }
+   
+   // More accurate calculation - add 500ms for proper rounding to avoid fast countdown
+   const adjustedDiff = diff + 500;
+   const hours = Math.floor(adjustedDiff / (1000 * 60 * 60));
+   const minutes = Math.floor((adjustedDiff % (1000 * 60 * 60)) / (1000 * 60));
+   const seconds = Math.floor((adjustedDiff % (1000 * 60)) / 1000);
+   
+   return {
+     timeString: `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`,
+     isTime: diff <= 1000 // Within 1 second of target
+   };
+ };
+
+ const handleApiBooking = useCallback(async () => {
+  reset(); // Reset previous booking state
+  setResponseTime(null);
+
+  const startTime = performance.now(); // Start timing
+
+  try {    
+    // Use client-side booking with user's Vietnam IP
+    if (!currentToken) {
+      throw new Error('No authentication token available');
+    }
+    await bookTennis(currentToken, selectedOption.value);
+    
+    const endTime = performance.now();
+    const duration = Math.round(endTime - startTime);
+    setResponseTime(duration);
+
+  } catch (err) {
+    const endTime = performance.now();
+    const duration = Math.round(endTime - startTime);
+    setResponseTime(duration);
+  }
+ }, [currentToken, selectedOption.value, bookTennis, reset, setResponseTime]);
 
  // Redirect if not logged in
  useEffect(() => {
@@ -64,586 +153,253 @@ export default function TennisBookingPage() {
   }
  }, [isLoading, isLoggedIn, router]);
 
+ // Countdown timer effect
+ useEffect(() => {
+   if (countdownEnabled) {
+     // Immediately update on start
+     const updateCountdown = () => {
+       const { timeString, isTime } = calculateTimeRemaining();
+       setTimeRemaining(timeString);
+       setIsTargetTime(isTime);
+       
+       // Auto-trigger booking when target time is reached
+       if (isTime && !bookingState.loading) {
+         handleApiBooking();
+         setCountdownEnabled(false); // Disable after triggering
+       }
+     };
+     
+     // Run immediately on start
+     updateCountdown();
+     
+     // Use 1000ms interval to sync with clock seconds and prevent drift
+     intervalRef.current = setInterval(updateCountdown, 1000);
+   } else {
+     if (intervalRef.current) {
+       clearInterval(intervalRef.current);
+       intervalRef.current = null;
+     }
+   }
+
+   return () => {
+     if (intervalRef.current) {
+       clearInterval(intervalRef.current);
+       intervalRef.current = null;
+     }
+   };
+ }, [countdownEnabled, bookingState.loading, handleApiBooking]);
+
  const handleLogout = () => {
   logout();
-  setBookingResultS1(null);
-  setBookingResultS2(null);
-  setBookingResultS3(null);
-  setBookingResultS4(null);
-  setBookingResultS5(null);
- };
- const handleBookingS1 = async () => {
-  setIsBookingS1(true); // Bắt đầu loading, vô hiệu hóa nút
-  setBookingResultS1(null);
-
-  try {
-   // Gọi đến API route của bạn bằng phương thức POST
-   const response = await fetch("/api/tennis", {
-    method: "POST",
-    headers: {
-     "Content-Type": "application/json",
-    },
-    cache: "no-store" as RequestCache,
-    keepalive: true,
-    body: JSON.stringify({
-     jwtToken: currentToken,
-     bookingDate,
-     fromTime,
-     bookingTarget: {
-      placeId: 801,
-      placeUtilityId: 625,
-      timeConstraintId: 571,
-      classifyId: 118,
-     },
-    }),
-   });
-
-   // Lấy kết quả JSON từ phản hồi
-   const result = await response.json();
-   console.log("result", JSON.stringify(result));
-   // Nếu thành công
-   setBookingResultS1(result);
-  } catch (error) {
-   // Nếu có lỗi trong quá trình gọi API
-   setBookingResultS1(error);
-  } finally {
-   // Dù thành công hay thất bại, cũng dừng loading
-   setIsBookingS1(false);
-  }
+  reset(); // Reset booking state
+  setCountdownEnabled(false); // Stop countdown on logout
  };
 
- const handleBookingS2 = async () => {
-  setIsBookingS2(true);
-  setBookingResultS2(null);
-
-  try {
-   const response = await fetch("/api/tennis", {
-    method: "POST",
-    headers: {
-     "Content-Type": "application/json",
-    },
-    cache: "no-store" as RequestCache,
-    keepalive: true,
-    body: JSON.stringify({
-     jwtToken: currentToken,
-     bookingDate,
-     fromTime,
-     bookingTarget: {
-      placeId: 801,
-      placeUtilityId: 625,
-      timeConstraintId: 575,
-      classifyId: 118,
-     },
-    }),
-   });
-
-   const result = await response.json();
-   console.log("result", JSON.stringify(result));
-   setBookingResultS2(result);
-  } catch (error) {
-   setBookingResultS2(error);
-  } finally {
-   setIsBookingS2(false);
-  }
+ const toggleCountdown = () => {
+   if (!countdownEnabled) {
+     // Starting countdown - useEffect will handle immediate update with fresh time
+     setCountdownEnabled(true);
+   } else {
+     // Stopping countdown
+     setCountdownEnabled(false);
+     setIsTargetTime(false);
+   }
  };
 
- const handleBookingS3 = async () => {
-  setIsBookingS3(true);
-  setBookingResultS3(null);
-
-  try {
-   const response = await fetch("/api/tennis", {
-    method: "POST",
-    headers: {
-     "Content-Type": "application/json",
-    },
-    cache: "no-store" as RequestCache,
-    keepalive: true,
-    body: JSON.stringify({
-     jwtToken: currentToken,
-     bookingDate,
-     fromTime,
-     bookingTarget: {
-      placeId: 802,
-      placeUtilityId: 626,
-      timeConstraintId: 575,
-      classifyId: 118,
-     },
-    }),
-   });
-
-   const result = await response.json();
-   console.log("result", JSON.stringify(result));
-   setBookingResultS3(result);
-  } catch (error) {
-   setBookingResultS3(error);
-  } finally {
-   setIsBookingS3(false);
-  }
- };
-
- const handleBookingS4 = async () => {
-  setIsBookingS4(true);
-  setBookingResultS4(null);
-
-  try {
-   const response = await fetch("/api/tennis", {
-    method: "POST",
-    headers: {
-     "Content-Type": "application/json",
-    },
-    cache: "no-store" as RequestCache,
-    keepalive: true,
-    body: JSON.stringify({
-     jwtToken: currentToken,
-     bookingDate,
-     fromTime,
-     bookingTarget: {
-      placeId: 801,
-      placeUtilityId: 625,
-      timeConstraintId: 576,
-      classifyId: 118,
-     },
-    }),
-   });
-
-   const result = await response.json();
-   console.log("result", JSON.stringify(result));
-   setBookingResultS4(result);
-  } catch (error) {
-   setBookingResultS4(error);
-  } finally {
-   setIsBookingS4(false);
-  }
- };
-
- const handleBookingS5 = async () => {
-  setIsBookingS5(true);
-  setBookingResultS5(null);
-
-  try {
-   const response = await fetch("/api/tennis", {
-    method: "POST",
-    headers: {
-     "Content-Type": "application/json",
-    },
-    cache: "no-store" as RequestCache,
-    keepalive: true,
-    body: JSON.stringify({
-     jwtToken: currentToken,
-     bookingDate,
-     fromTime,
-     bookingTarget: {
-      placeId: 802,
-      placeUtilityId: 626,
-      timeConstraintId: 576,
-      classifyId: 118,
-     },
-    }),
-   });
-
-   const result = await response.json();
-   console.log("result", JSON.stringify(result));
-   setBookingResultS5(result);
-  } catch (error) {
-   setBookingResultS5(error);
-  } finally {
-   setIsBookingS5(false);
-  }
- };
  if (isLoading) {
   return (
-   <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
+   <div className="min-h-screen flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #F6E2BC 0%, #A9D09E 100%)' }}>
     <div className="text-center">
-     <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
-     <p>Loading...</p>
+     <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" style={{ color: '#3B7097' }} />
+     <p style={{ color: '#3B7097' }}>Loading...</p>
     </div>
    </div>
   );
  }
+
  if (!isLoggedIn) {
   return (
-   <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
+   <div className="min-h-screen flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #F6E2BC 0%, #A9D09E 100%)' }}>
     <div className="text-center">
-     <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
-     <p>Redirecting to login...</p>
+     <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" style={{ color: '#3B7097' }} />
+     <p style={{ color: '#3B7097' }}>Redirecting to login...</p>
     </div>
    </div>
   );
  }
 
  return (
-  <div
-   className="min-h-screen p-4"
-   style={{ background: "linear-gradient(135deg, #F6E2BC 0%, #A9D09E 100%)" }}
-  >
+  <div className="min-h-screen p-4" style={{ background: 'linear-gradient(135deg, #F6E2BC 0%, #A9D09E 100%)' }}>
    <div className="max-w-4xl mx-auto pt-8">
-    {/* Header */}
-    <div className="flex justify-between items-center flex-col lg:flex-row gap-4 lg:gap-0">
-     <div className="flex space-x-2 w-full justify-between">
-      <div className="flex items-center gap-2">
-       <UserRoundCheck className="w-8 h-8" style={{ color: "#3B7097" }} />
-       <p className="text-xl font-bold" style={{ color: "#3B7097" }}>
-        {userData?.data?.fullName || "User"}!
-       </p>
+    {/* Header with Logout */}
+    <div className="flex justify-between items-start mb-8">
+     
+     <Button 
+      onClick={handleLogout} 
+      variant="outline" 
+      className="text-white border-2"
+      style={{ 
+       backgroundColor: '#3B7097', 
+       borderColor: '#3B7097',
+       color: 'white'
+      }}
+      onMouseEnter={(e) => {
+       (e.target as HTMLButtonElement).style.backgroundColor = '#75BDE0';
+       (e.target as HTMLButtonElement).style.borderColor = '#75BDE0';
+      }}
+      onMouseLeave={(e) => {
+       (e.target as HTMLButtonElement).style.backgroundColor = '#3B7097';
+       (e.target as HTMLButtonElement).style.borderColor = '#3B7097';
+      }}
+     >
+      <LogOut className="w-4 h-4 mr-2" />
+      Logout
+     </Button>
+    </div>
+    {/* Booking Result */}
+    {bookingState.success && (
+      <Card className="shadow-lg mb-6">
+        <CardContent className="p-6">
+          <div className="flex items-center space-x-2 mb-2">
+            <UserRoundCheck className="w-5 h-5" style={{ color: '#3B7097' }} />
+            <h1 className="font-semibold text-left" style={{ color: '#3B7097' }}>
+              ✅ Booking Successful (Vietnam IP)
+            </h1>
+          </div>
+          {responseTime && (
+            <p className="text-sm text-gray-600">
+              <strong>Response time:</strong> {responseTime}ms (Client-side)
+            </p>
+          )}
+          
+        </CardContent>
+      </Card>
+    )}
+    {/* Court Selection */}
+    <Card className="shadow-lg mb-6">
+     <CardHeader className="text-center">
+     <CardTitle className="text-lg font-bold text-gray-800 text-left">
+       Court & Time Selection
+      </CardTitle>
+     </CardHeader>
+     <CardContent>
+      <div className="space-y-4">
+       <div>
+        <Dropdown
+         options={courtOptions}
+         value={selectedOption.value}
+         onChange={(option) => setSelectedOption(option)}
+         placeholder="Select court and time..."
+         className="w-full"
+        />
+       </div>
+       {/* <div className="bg-gray-50 p-3 rounded-md">
+        <p className="text-sm"><strong>Place ID:</strong> {selectedOption.value.placeId}</p>
+        <p className="text-sm"><strong>Place Utility ID:</strong> {selectedOption.value.placeUtilityId}</p>
+        <p className="text-sm"><strong>Time Constraint ID:</strong> {selectedOption.value.timeConstraintId}</p>
+       </div> */}
       </div>
-      <Button
-       onClick={handleLogout}
-       variant="outline"
-       className="text-white border-2"
-       style={{
-        backgroundColor: "#3B7097",
-        borderColor: "#3B7097",
-        color: "white",
-       }}
-       onMouseEnter={(e) => {
-        (e.target as HTMLButtonElement).style.backgroundColor = "#75BDE0";
-        (e.target as HTMLButtonElement).style.borderColor = "#75BDE0";
-       }}
-       onMouseLeave={(e) => {
-        (e.target as HTMLButtonElement).style.backgroundColor = "#3B7097";
-        (e.target as HTMLButtonElement).style.borderColor = "#3B7097";
-       }}
-      >
-       <LogOut className="w-4 h-4 mr-2" />
-       Logout
-      </Button>
-     </div>
-    </div>
-    <CardDescription className="mb-4 mt-2">
-     Click on the buttons below to book tennis courts.
-    </CardDescription>
-     {bookingResultS1 && (
-      <Alert
-       className={
-        bookingResultS1.success
-         ? "border-green-200 bg-green-50 mt-2"
-         : "border-red-200 bg-red-50 mt-2"
-       }
-       autoClose={true}
-       onClose={() => setBookingResultS1(null)}
-      >
-       <AlertDescription
-        className={bookingResultS1.success ? "text-green-800" : "text-red-800"}
-       >
-        <div className="text-xs">
-         {bookingResultS1?.success
-          ? "Booking successful"
-          : bookingResultS1?.error?.message}
-        </div>
-       </AlertDescription>
-      </Alert>
-     )}
-     {bookingResultS2 && (
-      <Alert
-       className={
-        bookingResultS2.success
-         ? "border-green-200 bg-green-50 mt-2"
-         : "border-red-200 bg-red-50 mt-2"
-       }
-       autoClose={true}
-       onClose={() => setBookingResultS2(null)}
-      >
-       <AlertDescription
-        className={bookingResultS2.success ? "text-green-800" : "text-red-800"}
-       >
-        <div className="text-xs">
-         {bookingResultS2?.success
-          ? "Booking successful"
-          : bookingResultS2?.error?.message}
-        </div>
-       </AlertDescription>
-      </Alert>
-     )}
-     {bookingResultS3 && (
-      <Alert
-       className={
-        bookingResultS3.success
-         ? "border-green-200 bg-green-50 mt-2"
-         : "border-red-200 bg-red-50 mt-2"
-       }
-       autoClose={true}
-       onClose={() => setBookingResultS3(null)}
-      >
-       <AlertDescription
-        className={bookingResultS3.success ? "text-green-800" : "text-red-800"}
-       >
-        <div className="text-xs">
-         {bookingResultS3?.success
-          ? "Booking successful"
-          : bookingResultS3?.error?.message}
-        </div>
-       </AlertDescription>
-      </Alert>
-     )}
-     {bookingResultS4 && (
-      <Alert
-       className={
-        bookingResultS4.success
-         ? "border-green-200 bg-green-50 mt-2"
-         : "border-red-200 bg-red-50 mt-2"
-       }
-       autoClose={true}
-       onClose={() => setBookingResultS4(null)}
-      >
-       <AlertDescription
-        className={bookingResultS4.success ? "text-green-800" : "text-red-800"}
-       >
-        <div className="text-xs">
-         {bookingResultS4?.success
-          ? "Booking successful"
-          : bookingResultS4?.error?.message}
-        </div>
-       </AlertDescription>
-      </Alert>
-     )}
-     {bookingResultS5 && (
-      <Alert
-       className={
-        bookingResultS5.success
-         ? "border-green-200 bg-green-50 mt-2"
-         : "border-red-200 bg-red-50 mt-2"
-       }
-       autoClose={true}
-       onClose={() => setBookingResultS5(null)}
-      >
-       <AlertDescription
-        className={bookingResultS5.success ? "text-green-800" : "text-red-800"}
-       >
-        <div className="text-xs">
-         {bookingResultS5?.success
-          ? "Booking successful"
-          : bookingResultS5?.error?.message}
-        </div>
-       </AlertDescription>
-      </Alert>
-     )}
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4 mt-2">
-     {/* First booking card - Testing tennis-booking */}
-     <Card className="shadow-lg bg-white">
-      <CardHeader className="text-center p-2">
-       <div
-        className="mx-auto w-12 h-12 rounded-full flex items-center justify-center mb-1"
-        style={{ backgroundColor: "#75BDE0" }}
-       >
-        <Calendar className="w-6 h-6 text-white" />
-       </div>
-       <CardTitle className="text-lg font-bold text-gray-800">S1.02</CardTitle>
-      </CardHeader>
+     </CardContent>
+    </Card>
 
-      <CardContent className="space-y-1 px-4 py-2">
-       <Button
-        onClick={handleBookingS1}
-        disabled={isBookingS1 || !isLoggedIn}
-        className="w-full text-white font-semibold py-4 text-sm rounded-lg transition-all duration-200"
-        style={{ backgroundColor: "#3B7097" }}
-        onMouseEnter={(e) => {
-         if (!isBookingS1) {
-          (e.target as HTMLButtonElement).style.backgroundColor = "#75BDE0";
-         }
-        }}
-        onMouseLeave={(e) => {
-         if (!isBookingS1) {
-          (e.target as HTMLButtonElement).style.backgroundColor = "#3B7097";
-         }
-        }}
-        size="default"
-       >
-        {isBookingS1 ? (
-         <>
-          <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-          <span className="text-xs">Booking...</span>
-         </>
-        ) : (
-         <>
-          <Calendar className="w-3 h-3 mr-1" />
-          <span>10h-12h</span>
-         </>
-        )}
-       </Button>
+    {/* Auto-Booking Countdown */}
+    <Card className="shadow-lg mb-6">
+     <CardHeader className="text-center">
+      <CardTitle className="text-lg font-bold text-gray-800 text-left">
+        Auto-Booking Timer (15:55:00)
+      </CardTitle>
+     </CardHeader>
+     <CardContent>
+      <div className="space-y-4">
+       <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-2">
+         <Clock className="w-5 h-5" style={{ color: '#3B7097' }} />
+         <span className="font-mono text-lg font-bold" style={{ color: isTargetTime ? '#DC2626' : '#3B7097' }}>
+          {countdownEnabled ? timeRemaining : calculateTimeRemaining().timeString}
+         </span>
+        </div>
+        <Button 
+         onClick={toggleCountdown}
+         variant="outline"
+         className={`${countdownEnabled ? 'bg-red-100 border-red-300 text-red-700' : 'bg-green-100 border-green-300 text-green-700'}`}
+        >
+         {countdownEnabled ? (
+          <>
+           <Pause className="w-4 h-4 mr-2" />
+           Stop Countdown
+          </>
+         ) : (
+          <>
+           <Play className="w-4 h-4 mr-2" />
+           Start Countdown
+          </>
+         )}
+        </Button>
+       </div>
+       {countdownEnabled && (
+        <div className="bg-yellow-50 border border-yellow-200 p-3 rounded-md">
+         <p className="text-sm text-yellow-800">
+          🚀 <strong>Auto-booking is ACTIVE!</strong> The booking will be triggered automatically when the countdown reaches 15:55:00.
+         </p>
+        </div>
+       )}
+       {isTargetTime && countdownEnabled && (
+        <div className="bg-red-50 border border-red-200 p-3 rounded-md">
+         <p className="text-sm text-red-800 font-bold">
+          ⚡ TRIGGERING BOOKING NOW!
+         </p>
+        </div>
+       )}
+      </div>
+     </CardContent>
+    </Card>
+
+    {/* Client-Side Booking Button */}
+    <Button 
+     onClick={handleApiBooking} 
+     disabled={bookingState.loading}
+     className="w-full text-white border-2"
+     size="lg"
+     variant="outline"
+     style={{ 
+      backgroundColor: '#75BDE0', 
+      borderColor: '#75BDE0',
+      color: 'white'
+     }}
+     onMouseEnter={(e) => {
+      (e.target as HTMLButtonElement).style.backgroundColor = '#3B7097';
+      (e.target as HTMLButtonElement).style.borderColor = '#3B7097';
+     }}
+     onMouseLeave={(e) => {
+      (e.target as HTMLButtonElement).style.backgroundColor = '#75BDE0';
+      (e.target as HTMLButtonElement).style.borderColor = '#75BDE0';
+     }}
+    >
+     {bookingState.loading ? (
+      <>
+       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+       Booking...
+      </>
+     ) : (
+      <>
+       <Zap className="w-4 h-4 mr-2" />
+       Book
+      </>
+     )}
+    </Button>
+
+    {/* Error Display */}
+    {bookingState.error && (
+     <Card className="shadow-lg mb-6 mt-3">
+      <CardContent className="p-6">
+       <Alert className="border-red-200 bg-red-50">
+        <AlertDescription className="text-red-800">
+          ❌ {bookingState.error}
+        </AlertDescription>
+       </Alert>
       </CardContent>
      </Card>
-
-     {/* Second booking card */}
-     <Card className="shadow-lg bg-white">
-      <CardHeader className="text-center p-2">
-       <div
-        className="mx-auto w-12 h-12 rounded-full flex items-center justify-center mb-1"
-        style={{ backgroundColor: "#75BDE0" }}
-       >
-        <Calendar className="w-6 h-6 text-white" />
-       </div>
-       <CardTitle className="text-lg font-bold text-gray-800">S1.01</CardTitle>
-      </CardHeader>
-
-      <CardContent className="space-y-1 px-4 py-2">
-       <Button
-        onClick={handleBookingS2}
-        disabled={isBookingS2 || !isLoggedIn}
-        className="w-full text-white font-semibold py-4 text-sm rounded-lg transition-all duration-200"
-        style={{ backgroundColor: "#3B7097" }}
-        onMouseEnter={(e) => {
-         if (!isBookingS2) {
-          (e.target as HTMLButtonElement).style.backgroundColor = "#75BDE0";
-         }
-        }}
-        onMouseLeave={(e) => {
-         if (!isBookingS2) {
-          (e.target as HTMLButtonElement).style.backgroundColor = "#3B7097";
-         }
-        }}
-        size="default"
-       >
-        {isBookingS2 ? (
-         <>
-          <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-          <span className="text-xs">Booking...</span>
-         </>
-        ) : (
-         <>
-          <Calendar className="w-3 h-3 mr-1" />
-          <span>18h-20h</span>
-         </>
-        )}
-       </Button>
-      </CardContent>
-     </Card>
-
-     {/* Third booking card */}
-     <Card className="shadow-lg bg-white">
-      <CardHeader className="text-center p-2">
-       <div
-        className="mx-auto w-12 h-12 rounded-full flex items-center justify-center mb-1"
-        style={{ backgroundColor: "#75BDE0" }}
-       >
-        <Calendar className="w-6 h-6 text-white" />
-       </div>
-       <CardTitle className="text-lg font-bold text-gray-800">S1.02</CardTitle>
-      </CardHeader>
-
-      <CardContent className="space-y-1 px-4 py-2">
-       <Button
-        onClick={handleBookingS3}
-        disabled={isBookingS3 || !isLoggedIn}
-        className="w-full text-white font-semibold py-4 text-sm rounded-lg transition-all duration-200"
-        style={{ backgroundColor: "#3B7097" }}
-        onMouseEnter={(e) => {
-         if (!isBookingS3) {
-          (e.target as HTMLButtonElement).style.backgroundColor = "#75BDE0";
-         }
-        }}
-        onMouseLeave={(e) => {
-         if (!isBookingS3) {
-          (e.target as HTMLButtonElement).style.backgroundColor = "#3B7097";
-         }
-        }}
-        size="default"
-       >
-        {isBookingS3 ? (
-         <>
-          <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-          <span className="text-xs">Booking...</span>
-         </>
-        ) : (
-         <>
-          <Calendar className="w-3 h-3 mr-1" />
-          <span>18h-20h</span>
-         </>
-        )}
-       </Button>
-      </CardContent>
-     </Card>
-
-     {/* Fourth booking card */}
-     <Card className="shadow-lg bg-white">
-      <CardHeader className="text-center p-2">
-       <div
-        className="mx-auto w-12 h-12 rounded-full flex items-center justify-center mb-1"
-        style={{ backgroundColor: "#75BDE0" }}
-       >
-        <Calendar className="w-6 h-6 text-white" />
-       </div>
-       <CardTitle className="text-lg font-bold text-gray-800">S1.02</CardTitle>
-      </CardHeader>
-
-      <CardContent className="space-y-1 px-4 py-2">
-       <Button
-        onClick={handleBookingS4}
-        disabled={isBookingS4 || !isLoggedIn}
-        className="w-full text-white font-semibold py-4 text-sm rounded-lg transition-all duration-200"
-        style={{ backgroundColor: "#3B7097" }}
-        onMouseEnter={(e) => {
-         if (!isBookingS4) {
-          (e.target as HTMLButtonElement).style.backgroundColor = "#75BDE0";
-         }
-        }}
-        onMouseLeave={(e) => {
-         if (!isBookingS4) {
-          (e.target as HTMLButtonElement).style.backgroundColor = "#3B7097";
-         }
-        }}
-        size="default"
-       >
-        {isBookingS4 ? (
-         <>
-          <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-          <span className="text-xs">Booking...</span>
-         </>
-        ) : (
-         <>
-          <Calendar className="w-3 h-3 mr-1" />
-          <span>20h-21h</span>
-         </>
-        )}
-       </Button>
-      </CardContent>
-     </Card>
-
-     {/* Fifth booking card */}
-     <Card className="shadow-lg bg-white">
-      <CardHeader className="text-center p-2">
-       <div
-        className="mx-auto w-12 h-12 rounded-full flex items-center justify-center mb-1"
-        style={{ backgroundColor: "#75BDE0" }}
-       >
-        <Calendar className="w-6 h-6 text-white" />
-       </div>
-       <CardTitle className="text-lg font-bold text-gray-800">S1.02</CardTitle>
-      </CardHeader>
-
-      <CardContent className="space-y-1 px-4 py-2">
-       <Button
-        onClick={handleBookingS5}
-        disabled={isBookingS5 || !isLoggedIn}
-        className="w-full text-white font-semibold py-4 text-sm rounded-lg transition-all duration-200"
-        style={{ backgroundColor: "#3B7097" }}
-        onMouseEnter={(e) => {
-         if (!isBookingS5) {
-          (e.target as HTMLButtonElement).style.backgroundColor = "#75BDE0";
-         }
-        }}
-        onMouseLeave={(e) => {
-         if (!isBookingS5) {
-          (e.target as HTMLButtonElement).style.backgroundColor = "#3B7097";
-         }
-        }}
-        size="default"
-       >
-        {isBookingS5 ? (
-         <>
-          <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-          <span className="text-xs">Booking...</span>
-         </>
-        ) : (
-         <>
-          <Calendar className="w-3 h-3 mr-1" />
-          <span>20h-21h</span>
-         </>
-        )}
-       </Button>
-      </CardContent>
-     </Card>
-    </div>
+    )}
    </div>
   </div>
  );
