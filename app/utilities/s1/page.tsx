@@ -15,6 +15,7 @@ import {
  Clock,
  Play,
  Pause,
+ Settings,
 } from "lucide-react";
 import { useUser } from "@/contexts/UserContext";
 import { useCountDown } from "ahooks";
@@ -82,6 +83,15 @@ const courtOptions = [
    bookingHour: 10,
   },
  },
+ {
+  label: "Sân 2: 10h-12h",
+  value: {
+   placeId: 802,
+   placeUtilityId: 626,
+   timeConstraintId: 571,
+   bookingHour: 10,
+  },
+ },
 ];
 
 export default function TennisBookingPage() {
@@ -104,6 +114,13 @@ export default function TennisBookingPage() {
  const [bookingState, setBookingState] = useState({
   loading: false,
   success: false,
+  error: null as string | null,
+ });
+
+ // Utility API state
+ const [utilityState, setUtilityState] = useState({
+  loading: false,
+  data: null as any,
   error: null as string | null,
  });
 
@@ -174,6 +191,47 @@ export default function TennisBookingPage() {
   setBookingState({ loading: false, success: false, error: null }); // Reset booking state
  };
 
+
+ const handleUtilityApi = useCallback(async () => {
+  // Reset previous utility state
+  setUtilityState({ loading: true, data: null, error: null });
+
+  try {
+   if (!currentToken) {
+    throw new Error("No authentication token available");
+   }
+
+   const response = await fetch(`/api/utility?token=${encodeURIComponent(currentToken)}`, {
+    method: "GET",
+    headers: {
+     "Content-Type": "application/json",
+    },
+   });
+
+   const data = await response.json();
+
+   if (data.error) {
+    setUtilityState({
+     loading: false,
+     data: null,
+     error: data.error || "Utility API failed",
+    });
+   } else {
+    setUtilityState({
+     loading: false,
+     data: data.data,
+     error: null,
+    });
+   }
+  } catch (err) {
+   setUtilityState({
+    loading: false,
+    data: null,
+    error: err instanceof Error ? err.message : "Utility API failed",
+   });
+  }
+ }, [currentToken]);
+
  if (isLoading) {
   return (
    <div
@@ -216,6 +274,38 @@ export default function TennisBookingPage() {
    <div className="max-w-4xl mx-auto pt-8">
     {/* Header with Logout */}
     <div className="flex justify-between items-start mb-8">
+    <Button
+     onClick={handleUtilityApi}
+     disabled={utilityState.loading}
+     size="lg"
+     variant="outline"
+     className="text-white border-2 cursor-pointer"
+     style={{
+      backgroundColor: "#3B7097",
+      borderColor: "#3B7097",
+      color: "white",
+     }}
+     onMouseEnter={(e) => {
+      (e.target as HTMLButtonElement).style.backgroundColor = "#3B7097";
+      (e.target as HTMLButtonElement).style.borderColor = "#3B7097";
+     }}
+     onMouseLeave={(e) => {
+      (e.target as HTMLButtonElement).style.backgroundColor = "#75BDE0";
+      (e.target as HTMLButtonElement).style.borderColor = "#75BDE0";
+     }}
+    >
+     {utilityState.loading ? (
+      <>
+       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+       Loading Utilities...
+      </>
+     ) : (
+      <>
+       <Settings className="w-4 h-4 mr-2" />
+       Get Utilities
+      </>
+     )}
+    </Button>
      <Button
       onClick={handleLogout}
       variant="outline"
@@ -257,6 +347,11 @@ export default function TennisBookingPage() {
      </Card>
     )}
     {/* Court Selection */}
+    {utilityState.data && (
+     <h1 className="font-semibold text-left" style={{ color: "#3B7097" }}>
+     Tenis Booking started
+    </h1>
+    )}
     <Card className="shadow-lg mb-6">
      <CardHeader className="text-center">
       <CardTitle className="text-lg font-bold text-gray-800 text-left">
@@ -321,7 +416,7 @@ export default function TennisBookingPage() {
        Stop
       </Button>
      </CardContent>
-    </Card>
+    </Card>    
 
     {/* Client-Side Booking Button */}
     <Button
@@ -357,13 +452,26 @@ export default function TennisBookingPage() {
      )}
     </Button>
 
-    {/* Error Display */}
+    {/* Utility API Error Display */}
+    {utilityState.error && (
+     <Card className="shadow-lg mb-6 mt-3">
+      <CardContent className="p-6">
+       <Alert className="border-orange-200 bg-orange-50">
+        <AlertDescription className="text-orange-800">
+         <strong>Utility API Error:</strong> {utilityState.error}
+        </AlertDescription>
+       </Alert>
+      </CardContent>
+     </Card>
+    )}
+
+    {/* Booking Error Display */}
     {bookingState.error && (
      <Card className="shadow-lg mb-6 mt-3">
       <CardContent className="p-6">
        <Alert className="border-red-200 bg-red-50">
         <AlertDescription className="text-red-800">
-         ❌ {bookingState.error}
+         {bookingState.error}
         </AlertDescription>
        </Alert>
       </CardContent>

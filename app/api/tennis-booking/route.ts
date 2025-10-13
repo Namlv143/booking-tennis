@@ -12,6 +12,7 @@ const UTILITY_ID = 75
 const CLASSIFY_ID = 118
 const randomDelay = (min: any, max: any) => {
   const ms = Math.floor(Math.random() * (max - min + 1)) + min;
+  console.log(ms, 'sdfsdf')
   return new Promise(resolve => setTimeout(resolve, ms));
 };
 // Optimized axios instance with connection pooling and timeouts
@@ -231,30 +232,29 @@ async function executeServerBooking(
     const { placeId, placeUtilityId, timeConstraintId, bookingHour } = bookingParams
     const bookingDate = getBookingDate()
     const fromTime = generateFromTime(bookingHour)
-
     // Execute booking steps with optimized error checking
     const slotResult = await getSlot(bookingDate, jwtToken)
     if (slotResult.error) {
       return STEP_ERRORS.SLOT(slotResult)
     }
 
-    await randomDelay(150, 100)
+    await randomDelay(100, 150)
     const classifiesResult = await classifies(fromTime, timeConstraintId, jwtToken)
     if (classifiesResult.error) {
       return STEP_ERRORS.CLASSIFIES(classifiesResult)
     }
-    await randomDelay(150, 100)
+    await randomDelay(60, 100)
     const placesResult = await getPlaces(fromTime, timeConstraintId, jwtToken)
    
     if (placesResult.error) {
       return STEP_ERRORS.PLACES(placesResult)
     }
-    await randomDelay(150, 100)
+    await randomDelay(50, 80)
     const ticketInfoResult = await getTicketInfo(bookingDate, placeUtilityId, timeConstraintId, jwtToken)
     if (ticketInfoResult.error) {
       return STEP_ERRORS.TICKET_INFO(ticketInfoResult)
     }
-    await randomDelay(150, 100)
+    await randomDelay(66, 88)
     const bookingResult = await makeBooking(bookingDate, placeId, timeConstraintId, jwtToken)
     
     if (bookingResult.error) {
