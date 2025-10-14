@@ -238,23 +238,23 @@ async function executeServerBooking(
       return STEP_ERRORS.SLOT(slotResult)
     }
 
-    await randomDelay(100, 150)
+    await randomDelay(300, 400)
     const classifiesResult = await classifies(fromTime, timeConstraintId, jwtToken)
     if (classifiesResult.error) {
       return STEP_ERRORS.CLASSIFIES(classifiesResult)
     }
-    await randomDelay(60, 100)
+    await randomDelay(300, 400)
     const placesResult = await getPlaces(fromTime, timeConstraintId, jwtToken)
    
     if (placesResult.error) {
       return STEP_ERRORS.PLACES(placesResult)
     }
-    await randomDelay(50, 80)
+    await randomDelay(300, 400)
     const ticketInfoResult = await getTicketInfo(bookingDate, placeUtilityId, timeConstraintId, jwtToken)
     if (ticketInfoResult.error) {
       return STEP_ERRORS.TICKET_INFO(ticketInfoResult)
     }
-    await randomDelay(66, 88)
+    await randomDelay(300, 400)
     const bookingResult = await makeBooking(bookingDate, placeId, timeConstraintId, jwtToken)
     
     if (bookingResult.error) {

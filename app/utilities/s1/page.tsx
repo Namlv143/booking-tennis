@@ -1,103 +1,68 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Dropdown } from "@/components/ui/dropdown";
-import {
- Loader2,
- Calendar,
- LogOut,
- UserRoundCheck,
- Zap,
- Clock,
- Play,
- Pause,
- Settings,
-} from "lucide-react";
+import { Loader2, LogOut } from "lucide-react";
 import { useUser } from "@/contexts/UserContext";
 import { useCountDown } from "ahooks";
+import { toast, ToastContainer } from "react-toastify";
+import JsonView from "@uiw/react-json-view";
 
+const ONE_DAY_MS = 86400000;
+function getBookingDate(): number {
+ return Date.now() + ONE_DAY_MS;
+}
 // Court booking options
 const courtOptions = [
  {
-  label: "Sân 1: 18h-20h",
-  value: {
-   placeId: 801,
-   placeUtilityId: 625,
-   timeConstraintId: 575,
-  },
+  id: 0,
+  label: "6h-8h",
  },
  {
-  label: "Sân 2: 18h-20h",
-  value: {
-   placeId: 802,
-   placeUtilityId: 626,
-   timeConstraintId: 575,
-  },
+  id: 1,
+  label: "8h-10h",
  },
  {
-  label: "Sân 1: 20h-21h",
-  value: {
-   placeId: 801,
-   placeUtilityId: 625,
-   timeConstraintId: 576,
-   bookingHour: 20,
-  },
+  id: 2,
+  label: "10h-12h",
  },
  {
-  label: "Sân 2: 20h-21h",
-  value: {
-   placeId: 802,
-   placeUtilityId: 626,
-   timeConstraintId: 576,
-   bookingHour: 20,
-  },
+  id: 3,
+  label: "14h-16h",
  },
  {
-  label: "Sân 1: 08h-10h",
-  value: {
-   placeId: 801,
-   placeUtilityId: 625,
-   timeConstraintId: 570,
-   bookingHour: 8,
-  },
+  id: 4,
+  label: "16h-18h",
  },
  {
-  label: "Sân 2: 08h-10h",
-  value: {
-   placeId: 802,
-   placeUtilityId: 626,
-   timeConstraintId: 570,
-   bookingHour: 8,
-  },
+  id: 5,
+  label: "18h-20h",
  },
  {
-  label: "Sân 1: 10h-12h",
-  value: {
-   placeId: 801,
-   placeUtilityId: 625,
-   timeConstraintId: 571,
-   bookingHour: 10,
-  },
- },
- {
-  label: "Sân 2: 10h-12h",
-  value: {
-   placeId: 802,
-   placeUtilityId: 626,
-   timeConstraintId: 571,
-   bookingHour: 10,
-  },
+  id: 6,
+  label: "20h-21h",
  },
 ];
 
 export default function TennisBookingPage() {
  // State for UI
- const [selectedOption, setSelectedOption] = useState(courtOptions[0]); // Default to first option
+ const [selectedOption, setSelectedOption] = useState(
+  courtOptions[courtOptions.length - 2]
+ ); // Default to first option
+ const [selectedCourt, setSelectedCourt] = useState({ label: "S1.01", id: 0 }); // Default to first option
  const [responseTime, setResponseTime] = useState<number | null>(null);
+ const [targetData, setTargetData] = useState<any>({
+  timeConstraintId: null,
+  fromTime: null,
+  placeId: null,
+  placeUtilityId: null,
+  classifyId: null,
+  utilityId: null,
+  isFull: null,
+ });
  const router = useRouter();
  const [targetDate, setTargetDate] = useState<number>();
 
@@ -109,7 +74,7 @@ export default function TennisBookingPage() {
  });
  // Use context for user state
  const { isLoggedIn, currentToken, userData, isLoading, logout } = useUser();
-
+ const [showStepStates, setShowStepStates] = useState(false);
  // Booking state (replacing useTennisBooking hook)
  const [bookingState, setBookingState] = useState({
   loading: false,
@@ -124,6 +89,22 @@ export default function TennisBookingPage() {
   error: null as string | null,
  });
 
+ // Individual API step states
+ const [stepStates, setStepStates] = useState({
+  slot: { loading: false, data: null as any, error: null as string | null },
+  classifies: {
+   loading: false,
+   data: null as any,
+   error: null as string | null,
+  },
+  places: { loading: false, data: null as any, error: null as string | null },
+  ticketInfo: {
+   loading: false,
+   data: null as any,
+   error: null as string | null,
+  },
+  booking: { loading: false, data: null as any, error: null as string | null },
+ });
  const handleApiBooking = useCallback(async () => {
   // Reset previous booking state
   setBookingState({ loading: true, success: false, error: null });
@@ -144,10 +125,10 @@ export default function TennisBookingPage() {
     },
     body: JSON.stringify({
      token: currentToken,
-     placeId: selectedOption.value.placeId,
-     placeUtilityId: selectedOption.value.placeUtilityId,
-     timeConstraintId: selectedOption.value.timeConstraintId,
-     bookingHour: selectedOption.value?.bookingHour || 18,
+     placeId: targetData.placeId,
+     placeUtilityId: targetData.placeUtilityId,
+     timeConstraintId: targetData.timeConstraintId,
+     fromTime: targetData?.fromTime,
     }),
    });
 
@@ -159,11 +140,21 @@ export default function TennisBookingPage() {
 
    if (data.success) {
     setBookingState({ loading: false, success: true, error: null });
+    toast.success(`🎾 Booking Successful! (${duration}ms)`, {
+     position: "top-right",
+     autoClose: 1000,
+    });
    } else {
+    // Extract the actual error message from the API response
+    const errorMessage = data.data?.message || data.error || "Booking failed";
     setBookingState({
      loading: false,
      success: false,
-     error: data.error || "Booking failed",
+     error: errorMessage,
+    });
+    toast.error(errorMessage, {
+     position: "top-right",
+     autoClose: 1000,
     });
    }
   } catch (err) {
@@ -171,13 +162,18 @@ export default function TennisBookingPage() {
    const duration = Math.round(endTime - startTime);
    setResponseTime(duration);
 
+   const errorMessage = err instanceof Error ? err.message : "Booking failed";
    setBookingState({
     loading: false,
     success: false,
-    error: err instanceof Error ? err.message : "Booking failed",
+    error: errorMessage,
+   });
+   toast.error(errorMessage, {
+    position: "top-right",
+    autoClose: 1000,
    });
   }
- }, [currentToken, selectedOption.value]);
+ }, [currentToken, selectedOption.id]);
 
  // Redirect if not logged in
  useEffect(() => {
@@ -191,7 +187,6 @@ export default function TennisBookingPage() {
   setBookingState({ loading: false, success: false, error: null }); // Reset booking state
  };
 
-
  const handleUtilityApi = useCallback(async () => {
   // Reset previous utility state
   setUtilityState({ loading: true, data: null, error: null });
@@ -201,36 +196,387 @@ export default function TennisBookingPage() {
     throw new Error("No authentication token available");
    }
 
-   const response = await fetch(`/api/utility?token=${encodeURIComponent(currentToken)}`, {
-    method: "GET",
-    headers: {
-     "Content-Type": "application/json",
-    },
-   });
+   const response = await fetch(
+    `/api/utility?token=${encodeURIComponent(currentToken)}`,
+    {
+     method: "GET",
+     headers: {
+      "Content-Type": "application/json",
+     },
+    }
+   );
 
    const data = await response.json();
 
    if (data.error) {
+    const errorMessage =
+     data.data?.message || data.error || "Utility API failed";
     setUtilityState({
      loading: false,
      data: null,
-     error: data.error || "Utility API failed",
+     error: errorMessage,
+    });
+    toast.error(errorMessage, {
+     position: "top-right",
+     autoClose: 1000,
     });
    } else {
+    const utilityData = data.data.data[data.data.data.length - 1];
+    console.log("utilityData", utilityData);
+    setTargetData((prev: any) => ({
+     ...prev,
+     utilityId: utilityData.id,
+    }));
     setUtilityState({
      loading: false,
      data: data.data,
      error: null,
     });
+    //  toast.success("✅ Utilities loaded successfully!", {
+    //   position: "top-right",
+    //   autoClose: 1000,
+    //  });
    }
   } catch (err) {
+   const errorMessage =
+    err instanceof Error ? err.message : "Utility API failed";
    setUtilityState({
     loading: false,
     data: null,
-    error: err instanceof Error ? err.message : "Utility API failed",
+    error: errorMessage,
+   });
+   toast.error(errorMessage, {
+    position: "top-right",
+    autoClose: 1000,
    });
   }
- }, [currentToken]);
+ }, [currentToken, targetData]);
+
+ // Individual API step handlers
+ const handleSlotApi = useCallback(async () => {
+  const bookingDate = getBookingDate();
+  setStepStates((prev) => ({
+   ...prev,
+   slot: { loading: true, data: null, error: null },
+  }));
+
+  try {
+   if (!currentToken) {
+    throw new Error("No authentication token available");
+   }
+   setTargetData((prev: any) => ({
+    ...prev,
+    bookingDate,
+   }));
+   const response = await fetch("/api/tennis-booking/slot", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+     token: currentToken,
+     utilityId: targetData.utilityId,
+     bookingDate,
+    }),
+   });
+
+   const data = await response.json();
+
+   if (data.success) {
+    setStepStates((prev) => ({
+     ...prev,
+     slot: { loading: false, data: data.data, error: null },
+    }));
+    const selectedData = data.data.data[selectedOption.id];
+    setTargetData((prev: any) => ({
+     ...prev,
+     timeConstraintId: selectedData.id,
+     fromTime: selectedData.fromTime,
+     isFull: selectedData.isFull,
+    }));
+    toast.success(`✅ ${JSON.stringify(selectedData)}`, {
+     position: "top-right",
+     autoClose: 1000,
+    });
+   } else {
+    const errorMessage = data.data?.message || data.error || "Slot API failed";
+    setStepStates((prev) => ({
+     ...prev,
+     slot: { loading: false, data: null, error: errorMessage },
+    }));
+    toast.error(`❌ Step 1: ${errorMessage}`, {
+     position: "top-right",
+     autoClose: 1000,
+    });
+   }
+  } catch (err) {
+   const errorMessage = err instanceof Error ? err.message : "Slot API failed";
+   setStepStates((prev) => ({
+    ...prev,
+    slot: { loading: false, data: null, error: errorMessage },
+   }));
+   toast.error(`❌ Step 1: ${errorMessage}`, {
+    position: "top-right",
+    autoClose: 1000,
+   });
+  }
+ }, [currentToken, selectedOption.id, targetData]);
+
+ const handleClassifiesApi = useCallback(async () => {
+  toast.dismiss();
+  setStepStates((prev) => ({
+   ...prev,
+   classifies: { loading: true, data: null, error: null },
+  }));
+
+  try {
+   if (!currentToken) {
+    throw new Error("No authentication token available");
+   }
+
+   const response = await fetch("/api/tennis-booking/classifies", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+     token: currentToken,
+     timeConstraintId: targetData.timeConstraintId,
+     fromTime: targetData?.fromTime,
+     utilityId: targetData.utilityId,
+    }),
+   });
+
+   const data = await response.json();
+
+   if (data.success) {
+    const selectedData = data.data.data.find(
+     (item: any) => item.name === "Nội khu S1"
+    );
+    console.log("selectedData", selectedData);
+    setTargetData((prev: any) => ({
+     ...prev,
+     classifyId: selectedData.id,
+    }));
+    setStepStates((prev) => ({
+     ...prev,
+     classifies: { loading: false, data: data.data, error: null },
+    }));
+    toast.success("✅ Step 2: successfully", {
+     position: "top-right",
+     autoClose: 1000,
+    });
+   } else {
+    const errorMessage =
+     data.data?.message || data.error || "Classifies API failed";
+    setStepStates((prev) => ({
+     ...prev,
+     classifies: { loading: false, data: null, error: errorMessage },
+    }));
+    toast.error(`❌ Step 2: ${errorMessage}`, {
+     position: "top-right",
+     autoClose: 1000,
+    });
+   }
+  } catch (err) {
+   const errorMessage =
+    err instanceof Error ? err.message : "Classifies API failed";
+   setStepStates((prev) => ({
+    ...prev,
+    classifies: { loading: false, data: null, error: errorMessage },
+   }));
+   toast.error(`❌ Step 2: ${errorMessage}`, {
+    position: "top-right",
+    autoClose: 1000,
+   });
+  }
+ }, [currentToken, selectedOption.id, targetData]);
+
+ const handlePlacesApi = useCallback(async () => {
+  toast.dismiss();
+  setStepStates((prev) => ({
+   ...prev,
+   places: { loading: true, data: null, error: null },
+  }));
+
+  try {
+   if (!currentToken) {
+    throw new Error("No authentication token available");
+   }
+
+   const response = await fetch("/api/tennis-booking/places", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+     token: currentToken,
+     timeConstraintId: targetData.timeConstraintId,
+     fromTime: targetData.fromTime,
+     classifyId: targetData.classifyId,
+     utilityId: targetData.utilityId,
+    }),
+   });
+
+   const data = await response.json();
+
+   if (data.success) {
+    const selectedData = data.data.data[selectedCourt.id];
+    console.log("selectedData", selectedData);
+    setTargetData((prev: any) => ({
+     ...prev,
+     placeId: selectedData.id,
+     placeUtilityId: selectedData.placeUtilityId,
+    }));
+    setStepStates((prev) => ({
+     ...prev,
+     places: { loading: false, data: data.data, error: null },
+    }));
+
+    toast.success("✅ Step 3: successfully", {
+     position: "top-right",
+     autoClose: 1000,
+    });
+   } else {
+    const errorMessage =
+     data.data?.message || data.error || "Places API failed";
+    setStepStates((prev) => ({
+     ...prev,
+     places: { loading: false, data: null, error: errorMessage },
+    }));
+    toast.error(`❌ Step 3: ${errorMessage}`, {
+     position: "top-right",
+     autoClose: 1000,
+    });
+   }
+  } catch (err) {
+   const errorMessage =
+    err instanceof Error ? err.message : "Places API failed";
+   setStepStates((prev) => ({
+    ...prev,
+    places: { loading: false, data: null, error: errorMessage },
+   }));
+   toast.error(`❌ Step 3: ${errorMessage}`, {
+    position: "top-right",
+    autoClose: 5000,
+   });
+  }
+ }, [currentToken, selectedOption.id, targetData]);
+
+ const handleTicketInfoApi = useCallback(async () => {
+  toast.dismiss();
+  setStepStates((prev) => ({
+   ...prev,
+   ticketInfo: { loading: true, data: null, error: null },
+  }));
+
+  try {
+   if (!currentToken) {
+    throw new Error("No authentication token available");
+   }
+
+   const response = await fetch("/api/tennis-booking/ticket-info", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+     token: currentToken,
+     placeUtilityId: targetData.placeUtilityId,
+     timeConstraintId: targetData.timeConstraintId,
+     bookingDate: targetData.bookingDate,
+    }),
+   });
+
+   const data = await response.json();
+
+   if (data.success) {
+    setStepStates((prev) => ({
+     ...prev,
+     ticketInfo: { loading: false, data: data.data, error: null },
+    }));
+    toast.success("✅ Step 4: successfully", {
+     position: "top-right",
+     autoClose: 1000,
+    });
+   } else {
+    const errorMessage =
+     data.data?.message || data.error || "Ticket Info API failed";
+    setStepStates((prev) => ({
+     ...prev,
+     ticketInfo: { loading: false, data: null, error: errorMessage },
+    }));
+    toast.error(`❌ Step 4: ${errorMessage}`, {
+     position: "top-right",
+     autoClose: 1000,
+    });
+   }
+  } catch (err) {
+   const errorMessage =
+    err instanceof Error ? err.message : "Ticket Info API failed";
+   setStepStates((prev) => ({
+    ...prev,
+    ticketInfo: { loading: false, data: null, error: errorMessage },
+   }));
+   toast.error(`❌ Step 4: ${errorMessage}`, {
+    position: "top-right",
+    autoClose: 1000,
+   });
+  }
+ }, [currentToken, selectedOption.id, targetData]);
+
+ const handleBookingApi = useCallback(async () => {
+  setStepStates((prev) => ({
+   ...prev,
+   booking: { loading: true, data: null, error: null },
+  }));
+
+  try {
+   if (!currentToken) {
+    throw new Error("No authentication token available");
+   }
+
+   const response = await fetch("/api/tennis-booking/booking", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+     token: currentToken,
+     placeId: targetData.placeId,
+     timeConstraintId: targetData.timeConstraintId,
+     bookingDate: targetData.bookingDate,
+     utilityId: targetData.utilityId,
+    }),
+   });
+
+   const data = await response.json();
+
+   if (data.success) {
+    setStepStates((prev) => ({
+     ...prev,
+     booking: { loading: false, data: data.data, error: null },
+    }));
+    toast.success("✅ Step 5: Booking completed successfully", {
+     position: "top-right",
+     autoClose: 1000,
+    });
+   } else {
+    // Extract the actual error message from the API response
+    const errorMessage =
+     data.data?.message || data.error || "Booking API failed";
+    setStepStates((prev) => ({
+     ...prev,
+     booking: { loading: false, data: null, error: errorMessage },
+    }));
+    toast.error(`❌ Step 5: ${errorMessage}`, {
+     position: "top-right",
+     autoClose: 1000,
+    });
+   }
+  } catch (err) {
+   const errorMessage =
+    err instanceof Error ? err.message : "Booking API failed";
+   setStepStates((prev) => ({
+    ...prev,
+    booking: { loading: false, data: null, error: errorMessage },
+   }));
+   toast.error(`❌ Step 5: ${errorMessage}`, {
+    position: "top-right",
+    autoClose: 1000,
+   });
+  }
+ }, [currentToken, selectedOption.id, targetData]);
 
  if (isLoading) {
   return (
@@ -274,38 +620,35 @@ export default function TennisBookingPage() {
    <div className="max-w-4xl mx-auto pt-8">
     {/* Header with Logout */}
     <div className="flex justify-between items-start mb-8">
-    <Button
-     onClick={handleUtilityApi}
-     disabled={utilityState.loading}
-     size="lg"
-     variant="outline"
-     className="text-white border-2 cursor-pointer"
-     style={{
-      backgroundColor: "#3B7097",
-      borderColor: "#3B7097",
-      color: "white",
-     }}
-     onMouseEnter={(e) => {
-      (e.target as HTMLButtonElement).style.backgroundColor = "#3B7097";
-      (e.target as HTMLButtonElement).style.borderColor = "#3B7097";
-     }}
-     onMouseLeave={(e) => {
-      (e.target as HTMLButtonElement).style.backgroundColor = "#75BDE0";
-      (e.target as HTMLButtonElement).style.borderColor = "#75BDE0";
-     }}
-    >
-     {utilityState.loading ? (
-      <>
-       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-       Loading Utilities...
-      </>
-     ) : (
-      <>
-       <Settings className="w-4 h-4 mr-2" />
-       Get Utilities
-      </>
-     )}
-    </Button>
+     <Button
+      onClick={handleUtilityApi}
+      disabled={utilityState.loading}
+      size="lg"
+      variant="outline"
+      className="text-white border-2 cursor-pointer"
+      style={{
+       backgroundColor: "#3B7097",
+       borderColor: "#3B7097",
+       color: "white",
+      }}
+      onMouseEnter={(e) => {
+       (e.target as HTMLButtonElement).style.backgroundColor = "#3B7097";
+       (e.target as HTMLButtonElement).style.borderColor = "#3B7097";
+      }}
+      onMouseLeave={(e) => {
+       (e.target as HTMLButtonElement).style.backgroundColor = "#75BDE0";
+       (e.target as HTMLButtonElement).style.borderColor = "#75BDE0";
+      }}
+     >
+      {utilityState.loading ? (
+       <>
+        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+        Loading
+       </>
+      ) : (
+       <>Click to Start</>
+      )}
+     </Button>
      <Button
       onClick={handleLogout}
       variant="outline"
@@ -328,53 +671,233 @@ export default function TennisBookingPage() {
       Logout
      </Button>
     </div>
-    {/* Booking Result */}
-    {bookingState.success && (
-     <Card className="shadow-lg mb-6">
-      <CardContent className="p-6">
-       <div className="flex items-center space-x-2 mb-2">
-        <UserRoundCheck className="w-5 h-5" style={{ color: "#3B7097" }} />
-        <h1 className="font-semibold text-left" style={{ color: "#3B7097" }}>
-         ✅ Booking Successful
-        </h1>
-       </div>
-       {responseTime && (
-        <p className="text-sm text-gray-600">
-         <strong>Response time:</strong> {responseTime}ms (Server-side)
-        </p>
-       )}
-      </CardContent>
-     </Card>
-    )}
-    {/* Court Selection */}
-    {utilityState.data && (
-     <h1 className="font-semibold text-left" style={{ color: "#3B7097" }}>
-     Tenis Booking started
-    </h1>
-    )}
-    <Card className="shadow-lg mb-6">
-     <CardHeader className="text-center">
-      <CardTitle className="text-lg font-bold text-gray-800 text-left">
-       Court & Time Selection
-      </CardTitle>
-     </CardHeader>
-     <CardContent>
-      <div className="space-y-4">
-       <div>
-        <Dropdown
-         options={courtOptions}
-         value={selectedOption.value}
-         onChange={(option) => setSelectedOption(option)}
-         placeholder="Select court and time..."
-         className="w-full"
-        />
-       </div>
-      </div>
-     </CardContent>
-    </Card>
+    {targetData.utilityId && (
+     <>
+      {/* Court Selection */}
+      <Card className="shadow-lg mb-6">
+       <CardHeader className="text-center">
+        <CardTitle className="text-lg font-bold text-gray-800 text-left">
+         Court & Time Selection
+        </CardTitle>
+       </CardHeader>
+       <CardContent>
+        <div className="space-y-4 flex flex-row justify-between gap-2">
+         <Dropdown
+          options={courtOptions}
+          value={selectedOption.id}
+          onChange={(option) => setSelectedOption(option)}
+          placeholder="Select court and time..."
+          className="w-full"
+         />
+         <Dropdown
+          options={[
+           { label: "S1.01", id: 0 },
+           { label: "S1.02", id: 1 },
+          ]}
+          value={selectedCourt.id}
+          onChange={(option) => setSelectedCourt(option)}
+          placeholder="Select court and time..."
+          className="w-full"
+         />
+        </div>
+       </CardContent>
+      </Card>
 
-    {/* Auto-Booking Countdown */}
-    <Card className="shadow-lg mb-6">
+      {/* Individual API Steps */}
+      <Card className="shadow-lg mb-6">
+       <CardContent className="space-y-3">
+        {/* Step 1: Slot */}
+        <Button
+         onClick={handleSlotApi}
+         disabled={stepStates.slot.loading}
+         className="w-full text-white border-2 cursor-pointer"
+         size="lg"
+         variant="outline"
+         style={{
+          backgroundColor: "#f39c12",
+          borderColor: "#f39c12",
+          color: "white",
+         }}
+         onMouseEnter={(e) => {
+          (e.target as HTMLButtonElement).style.backgroundColor = "#D4A254";
+          (e.target as HTMLButtonElement).style.borderColor = "#D4A254";
+         }}
+         onMouseLeave={(e) => {
+          (e.target as HTMLButtonElement).style.backgroundColor = "#f39c12";
+          (e.target as HTMLButtonElement).style.borderColor = "#f39c12";
+         }}
+        >
+         {stepStates.slot.loading ? (
+          <>
+           <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+           Step 1: Getting Slots...
+          </>
+         ) : (
+          <>{selectedOption.label}</>
+         )}
+        </Button>
+
+        {/* Step 2: Classifies */}
+        <Button
+         onClick={handleClassifiesApi}
+         disabled={stepStates.classifies.loading || !stepStates.slot.data}
+         className="w-full text-white border-2 cursor-pointer"
+         size="lg"
+         variant="outline"
+         style={{
+          backgroundColor: "#f39c12",
+          borderColor: "#f39c12",
+          color: "white",
+         }}
+         onMouseEnter={(e) => {
+          (e.target as HTMLButtonElement).style.backgroundColor = "#D4A254";
+          (e.target as HTMLButtonElement).style.borderColor = "#D4A254";
+         }}
+         onMouseLeave={(e) => {
+          (e.target as HTMLButtonElement).style.backgroundColor = "#f39c12";
+          (e.target as HTMLButtonElement).style.borderColor = "#f39c12";
+         }}
+        >
+         {stepStates.classifies.loading ? (
+          <>
+           <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+           Loading...
+          </>
+         ) : (
+          <>S1</>
+         )}
+        </Button>
+
+        {/* Step 3: Places */}
+        <Button
+         onClick={handlePlacesApi}
+         disabled={stepStates.places.loading || !stepStates.classifies.data}
+         className="w-full text-white border-2 cursor-pointer"
+         size="lg"
+         variant="outline"
+         style={{
+          backgroundColor: "#f39c12",
+          borderColor: "#f39c12",
+          color: "white",
+         }}
+         onMouseEnter={(e) => {
+          (e.target as HTMLButtonElement).style.backgroundColor = "#D4A254";
+          (e.target as HTMLButtonElement).style.borderColor = "#D4A254";
+         }}
+         onMouseLeave={(e) => {
+          (e.target as HTMLButtonElement).style.backgroundColor = "#f39c12";
+          (e.target as HTMLButtonElement).style.borderColor = "#f39c12";
+         }}
+        >
+         {stepStates.places.loading ? (
+          <>
+           <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+           Loading...
+          </>
+         ) : (
+          <>{selectedCourt.label}</>
+         )}
+        </Button>
+
+        {/* Step 4: Ticket Info */}
+        <Button
+         onClick={handleTicketInfoApi}
+         disabled={stepStates.ticketInfo.loading || !stepStates.places.data}
+         className="w-full text-white border-2 cursor-pointer"
+         size="lg"
+         variant="outline"
+         style={{
+          backgroundColor: "#f39c12",
+          borderColor: "#f39c12",
+          color: "white",
+         }}
+         onMouseEnter={(e) => {
+          (e.target as HTMLButtonElement).style.backgroundColor = "#D4A254";
+          (e.target as HTMLButtonElement).style.borderColor = "#D4A254";
+         }}
+         onMouseLeave={(e) => {
+          (e.target as HTMLButtonElement).style.backgroundColor = "#f39c12";
+          (e.target as HTMLButtonElement).style.borderColor = "#f39c12";
+         }}
+        >
+         {stepStates.ticketInfo.loading ? (
+          <>
+           <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+           Loading...
+          </>
+         ) : (
+          <>Ticket Info</>
+         )}
+        </Button>
+
+        {/* Step 5: Booking */}
+        <Button
+         onClick={handleBookingApi}
+         disabled={stepStates.booking.loading || !stepStates.ticketInfo.data}
+         className="w-full text-white border-2 cursor-pointer flex"
+         size="lg"
+         variant="outline"
+         style={{
+          backgroundColor: "#f39c12",
+          borderColor: "#f39c12",
+          color: "white",
+         }}
+         onMouseEnter={(e) => {
+          (e.target as HTMLButtonElement).style.backgroundColor = "#D4A254";
+          (e.target as HTMLButtonElement).style.borderColor = "#D4A254";
+         }}
+         onMouseLeave={(e) => {
+          (e.target as HTMLButtonElement).style.backgroundColor = "#f39c12";
+          (e.target as HTMLButtonElement).style.borderColor = "#f39c12";
+         }}
+        >
+         {stepStates.booking.loading ? (
+          <>
+           <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+           Booking...
+          </>
+         ) : (
+          <>Make Booking</>
+         )}
+        </Button>
+       </CardContent>
+      </Card>
+
+      {/* Client-Side Booking Button */}
+      {/* <Button
+     onClick={handleApiBooking}
+     disabled={bookingState.loading}
+     className="w-full text-white border-2 cursor-pointer"
+     size="lg"
+     variant="outline"
+     style={{
+      backgroundColor: "#75BDE0",
+      borderColor: "#75BDE0",
+      color: "white",
+     }}
+     onMouseEnter={(e) => {
+      (e.target as HTMLButtonElement).style.backgroundColor = "#3B7097";
+      (e.target as HTMLButtonElement).style.borderColor = "#3B7097";
+     }}
+     onMouseLeave={(e) => {
+      (e.target as HTMLButtonElement).style.backgroundColor = "#75BDE0";
+      (e.target as HTMLButtonElement).style.borderColor = "#75BDE0";
+     }}
+    >
+     {bookingState.loading ? (
+      <>
+       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+       Booking...
+      </>
+     ) : (
+      <>
+       <Zap className="w-4 h-4 mr-2" />
+       Book
+      </>
+     )}
+    </Button> */}
+      {/* Auto-Booking Countdown */}
+      {/* <Card className="shadow-lg mt-6">
      <CardHeader className="text-center">
       <CardTitle className="text-lg font-bold text-gray-800 text-left">
        Auto-Booking Timer
@@ -416,67 +939,36 @@ export default function TennisBookingPage() {
        Stop
       </Button>
      </CardContent>
-    </Card>    
-
-    {/* Client-Side Booking Button */}
-    <Button
-     onClick={handleApiBooking}
-     disabled={bookingState.loading}
-     className="w-full text-white border-2 cursor-pointer"
-     size="lg"
-     variant="outline"
-     style={{
-      backgroundColor: "#75BDE0",
-      borderColor: "#75BDE0",
-      color: "white",
-     }}
-     onMouseEnter={(e) => {
-      (e.target as HTMLButtonElement).style.backgroundColor = "#3B7097";
-      (e.target as HTMLButtonElement).style.borderColor = "#3B7097";
-     }}
-     onMouseLeave={(e) => {
-      (e.target as HTMLButtonElement).style.backgroundColor = "#75BDE0";
-      (e.target as HTMLButtonElement).style.borderColor = "#75BDE0";
-     }}
-    >
-     {bookingState.loading ? (
-      <>
-       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-       Booking...
-      </>
-     ) : (
-      <>
-       <Zap className="w-4 h-4 mr-2" />
-       Book
-      </>
-     )}
-    </Button>
-
-    {/* Utility API Error Display */}
-    {utilityState.error && (
-     <Card className="shadow-lg mb-6 mt-3">
-      <CardContent className="p-6">
-       <Alert className="border-orange-200 bg-orange-50">
-        <AlertDescription className="text-orange-800">
-         <strong>Utility API Error:</strong> {utilityState.error}
-        </AlertDescription>
-       </Alert>
-      </CardContent>
-     </Card>
+    </Card> */}
+      <Button
+       className="w-full text-white border-2 cursor-pointer"
+       size="lg"
+       variant="outline"
+       style={{
+        backgroundColor: "#f39c12",
+        borderColor: "#f39c12",
+        color: "white",
+       }}
+       onClick={() => {
+        setShowStepStates(!showStepStates);
+       }}
+      >
+       View Logs
+      </Button>
+      {showStepStates && (
+       <Card className="shadow-lg mt-6">
+        <CardContent className="break-words">
+         {stepStates.slot.data && <JsonView value={stepStates.slot.data} />}
+         {stepStates.classifies.data && <JsonView value={stepStates.classifies.data} />}
+         {stepStates.places.data && <JsonView value={stepStates.places.data} />}
+         {stepStates.ticketInfo.data && <JsonView value={stepStates.ticketInfo.data} />}
+         {stepStates.booking.data && <JsonView value={stepStates.booking.data} />}
+        </CardContent>
+       </Card>
+      )}
+     </>
     )}
-
-    {/* Booking Error Display */}
-    {bookingState.error && (
-     <Card className="shadow-lg mb-6 mt-3">
-      <CardContent className="p-6">
-       <Alert className="border-red-200 bg-red-50">
-        <AlertDescription className="text-red-800">
-         {bookingState.error}
-        </AlertDescription>
-       </Alert>
-      </CardContent>
-     </Card>
-    )}
+    {/* <ToastContainer limit={1} /> */}
    </div>
   </div>
  );

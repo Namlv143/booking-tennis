@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 
 interface DropdownOption {
   label: string;
-  value: any;
+  id: any;
 }
 
 interface DropdownProps {
@@ -31,7 +31,8 @@ export function Dropdown({
   
   // Find the selected option
   const selectedOption = options.find(option => 
-    JSON.stringify(option.value) === JSON.stringify(value)
+    option.id === value
+
   );
 
   // Close dropdown when clicking outside
