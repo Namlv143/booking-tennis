@@ -702,7 +702,12 @@ export default function TennisBookingPage() {
         </div>
        </CardContent>
       </Card>
-
+      {stepStates.booking.data && (
+       <h3 className="text-md font-bold mb-2 text-green-500 text-left">Booking Successfully</h3>
+      )}
+      {stepStates.booking.error && (
+       <h3 className="text-md font-bold mb-2 text-red-500 text-left">{stepStates.booking.error}</h3>
+      )}
       {/* Individual API Steps */}
       <Card className="shadow-lg mb-6">
        <CardContent className="space-y-3">
