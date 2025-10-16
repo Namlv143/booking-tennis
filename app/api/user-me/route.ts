@@ -53,8 +53,13 @@ class VinhomesUserMeService {
       }
 
       const data = await response.json()
-      console.log("[v0] User/me API success")
-      return { data }
+      console.log("[v0] User/me API success", data)
+      
+      // Extract customerInfo from the response to match login API format
+      const customerInfo = data?.data?.customerInfo || data?.data || data
+      console.log("[v0] Extracted customerInfo:", customerInfo)
+      
+      return { data: customerInfo }
     } catch (error) {
       console.error("[v0] User/me API failed:", error)
       return { error: String(error) }

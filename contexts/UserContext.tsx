@@ -1,6 +1,6 @@
 "use client"
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
 import { TokenService } from '@/lib/token-service'
@@ -21,7 +21,7 @@ interface UserContextType {
   isLoading: boolean
   
   // User actions
-  login: (token: string, userData: UserData, username?: string) => void
+  login: (token: string, userData: UserData, username?: string) => Promise<void>
   logout: () => void
   updateUserData: (data: UserData) => void
   refreshUserData: () => Promise<void>
@@ -59,6 +59,31 @@ export function UserProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  // Load user data from API
+  const loadUserData = useCallback(async (token: string) => {
+    try {
+      const userMeResponse = await fetch("/api/user-me", {
+        method: "POST", 
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token }),
+      })
+      console.log("userMeResponse", userMeResponse)
+      if (userMeResponse.ok) {
+        const userMeResult = await userMeResponse.json()
+        console.log("userMeResult from /api/user-me:", userMeResult)
+        if (userMeResult.data) {
+          console.log("Setting userData to:", userMeResult.data)
+          setUserData(userMeResult.data)
+        }
+      } else if (userMeResponse.status === 400 || userMeResponse.ok === false) {
+        // Token is invalid/expired, clear all tokens and redirect to login
+        clearAllAndRedirectToLogin()
+      }
+    } catch (error) {
+      console.error("Failed to load user data:", error)
+    }
+  }, [])
+
   // Initialize user state on mount
   useEffect(() => {
     const initializeUser = async () => {
@@ -92,33 +117,10 @@ export function UserProvider({ children }: { children: ReactNode }) {
     }
 
     initializeUser()
-  }, [])
-
-  // Load user data from API
-  const loadUserData = async (token: string) => {
-    try {
-      const userMeResponse = await fetch("/api/user-me", {
-        method: "POST", 
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token }),
-      })
-      console.log("userMeResponse", userMeResponse)
-      if (userMeResponse.ok) {
-        const userMeResult = await userMeResponse.json()
-        if (userMeResult.data) {
-          setUserData(userMeResult.data)
-        }
-      } else if (userMeResponse.status === 400 || userMeResponse.ok === false) {
-        // Token is invalid/expired, clear all tokens and redirect to login
-        clearAllAndRedirectToLogin()
-      }
-    } catch (error) {
-      console.error("Failed to load user data:", error)
-    }
-  }
+  }, [loadUserData])
 
   // Login function
-  const login = (token: string, userData: UserData, username?: string) => {
+  const login = async (token: string, userData: UserData, username?: string) => {
     // Store token if username is provided
     if (username) {
       TokenService.storeToken(username, token)
@@ -127,6 +129,14 @@ export function UserProvider({ children }: { children: ReactNode }) {
     setCurrentToken(token)
     setIsLoggedIn(true)
     setUserData(userData)
+    
+    // Return a promise that resolves after state updates
+    return new Promise<void>((resolve) => {
+      // Use setTimeout to ensure state updates are processed
+      setTimeout(() => {
+        resolve()
+      }, 0)
+    })
   }
 
   // Logout function

@@ -159,40 +159,6 @@ class VinhomesLoginService {
       throw error
     }
   }
-
-  private async callEditorConfig(token: string): Promise<EditorConfigResponse> {
-    try {
-      const url = `${VinhomesLoginService.BASE_URL}/api/vhr/customer/v0/editor-config/`
-      const headers = this.getHeaders(token)
-
-      console.log("Calling editor-config API...")
-      
-      const response = await fetch(url, {
-        method: "GET",
-        headers,
-        cache: "no-store",
-        credentials: "omit",
-        mode: "cors",
-        redirect: "follow",
-        referrerPolicy: "no-referrer",
-        keepalive: false,
-      })
-
-      if (!response.ok) {
-        const errorText = await response.text()
-        console.log("Editor-config API error:", response.status, errorText)
-        return { error: `HTTP ${response.status}: ${errorText}` }
-      }
-
-      const data = await response.json()
-      console.log("Editor-config API success")
-      return { data }
-    } catch (error) {
-      console.error("Editor-config API failed:", error)
-      return { error: String(error) }
-    }
-  }
-
   private async callUserMe(token: string): Promise<UserMeResponse> {
     try {
       const url = `${VinhomesLoginService.BASE_URL}/api/vhr/customer/v0/user/me`
@@ -218,6 +184,7 @@ class VinhomesLoginService {
       }
 
       const data = await response.json()
+      
       console.log("User/me API success")
       return { data }
     } catch (error) {
@@ -237,13 +204,8 @@ class VinhomesLoginService {
       console.log("Login successful, calling additional APIs...")
 
       // Call all three APIs in parallel for better performance
-      const [editorConfig, userMe] = await Promise.all([
-        this.callEditorConfig(token),
-        this.callUserMe(token),
-      ])
-
+      const userMe= await this.callUserMe(token)
       // Add results to login response
-      loginResult.editorConfig = editorConfig
       loginResult.userMe = userMe
       
     }
